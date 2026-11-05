@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { Globe, StickyNote, Calculator as CalcIcon } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
+import { Globe, StickyNote, Calculator as CalcIcon, Sparkles, Terminal } from "lucide-react";
 import { useOS } from "./store";
 import { useSpec } from "./device-context";
 import { useData, contactName } from "./data";
@@ -19,6 +19,31 @@ function safeEval(q: string): number | null {
   }
 }
 
+const HELP_FEATURES = [
+  { icon: "🔍", name: "Spotlight Search", desc: "Find apps, contacts, notes, and search the web" },
+  { icon: "🎙️", name: "Siri", desc: "Ask about the weather, set timers, open apps, call contacts" },
+  { icon: "🎵", name: "Music", desc: "Play generated tracks with synced lyrics" },
+  { icon: "✍️", name: "Writing Tools", desc: "Proofread, rewrite, or summarize selected text" },
+  { icon: "🔦", name: "Control Center", desc: "Toggles, brightness, volume, Now Playing" },
+  { icon: "🌙", name: "Focus", desc: "DND, Personal, Work, and Sleep modes" },
+  { icon: "🔔", name: "Notifications", desc: "Banners, Notification Center, and shade" },
+  { icon: "🔐", name: "Face ID & Passcode", desc: "Lock and unlock with a 6-digit passcode" },
+  { icon: "🎨", name: "Icon Modes", desc: "Default, tinted, and dark home screen icons (iOS 18)" },
+];
+
+const HELP_SHORTCUTS: { key: string; label: string }[] = [
+  { key: "H", label: "Home" },
+  { key: "L", label: "Lock / Side button" },
+  { key: "D", label: "Toggle Dark Mode" },
+  { key: "S", label: "App Switcher" },
+  { key: "C", label: "Control Center" },
+  { key: "N", label: "Notifications shade" },
+  { key: "I", label: "Siri" },
+  { key: "/", label: "Spotlight Search" },
+  { key: "Esc", label: "Dismiss / go back" },
+  { key: "⌘Z", label: "Undo (shake to undo)" },
+];
+
 export function Spotlight() {
   const spec = useSpec();
   const installed = useOS((s) => s.installed);
@@ -28,8 +53,18 @@ export function Spotlight() {
   const notes = useData((s) => s.notes);
   const reminders = useData((s) => s.reminders);
   const [q, setQ] = useState("");
+  const [confetti, setConfetti] = useState(false);
   const kb = useOS((s) => s.kbOpen);
   const ql = q.trim().toLowerCase();
+
+  // Konami easter egg — confetti + cheat mode toast
+  useEffect(() => {
+    if (ql !== "konami") return;
+    setConfetti(true);
+    useOS.getState().showToast(" cheat mode activated");
+    const t = setTimeout(() => setConfetti(false), 4500);
+    return () => clearTimeout(t);
+  }, [ql]);
 
   const close = () => {
     (document.activeElement as HTMLElement | null)?.blur();
@@ -78,7 +113,7 @@ export function Spotlight() {
         </button>
       </div>
       <ScrollView className="absolute inset-x-0 px-4" style={{ top: spec.safeTop + 56, bottom: kb ? spec.kbH : 0 }}>
-        {!res && (
+        {!res && ql !== "help" && ql !== "konami" && (
           <div className="mt-2">
             <div className="px-1 pb-2 text-[13px] font-semibold uppercase text-white/70">Siri Suggestions</div>
             <div className="flex justify-between rounded-[18px] bg-ios-material px-4 py-3 backdrop-blur-xl">
@@ -91,7 +126,55 @@ export function Spotlight() {
             </div>
           </div>
         )}
-        {res && (
+        {ql === "help" && (
+          <div className="mt-1">
+            {section(
+              "Help — Features & Shortcuts",
+              <div className="px-4 py-3 text-ios-label">
+                <div className="mb-2 flex items-center gap-2 text-[15px] font-semibold">
+                  <Sparkles size={16} className="text-ios-purple" />
+                  Available Features
+                </div>
+                <div className="grid grid-cols-1 gap-2">
+                  {HELP_FEATURES.map((f) => (
+                    <div key={f.name} className="flex items-start gap-2">
+                      <span className="text-[18px] leading-[22px]">{f.icon}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="text-[14px] font-semibold leading-[18px]">{f.name}</div>
+                        <div className="text-[12px] leading-[16px] text-ios-label2">{f.desc}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mb-2 mt-4 flex items-center gap-2 text-[15px] font-semibold">
+                  <Terminal size={16} className="text-ios-blue" />
+                  Keyboard Shortcuts
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {HELP_SHORTCUTS.map((s) => (
+                    <div key={s.key} className="flex items-center gap-2">
+                      <kbd className="flex h-[22px] min-w-[22px] items-center justify-center rounded-[5px] bg-ios-fill2 px-1.5 text-[12px] font-semibold text-ios-label">{s.key}</kbd>
+                      <span className="truncate text-[13px] text-ios-label2">{s.label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>,
+            )}
+          </div>
+        )}
+        {ql === "konami" && (
+          <div className="mt-1">
+            {section(
+              "Cheat Mode",
+              <div className="px-4 py-4 text-center text-ios-label">
+                <div className="text-[44px]">🎮</div>
+                <div className="mt-2 text-[17px] font-semibold">Konami Code Activated</div>
+                <div className="mt-1 text-[13px] text-ios-label2">↑ ↑ ↓ ↓ ← → ← → B A — cheat mode unlocked.</div>
+              </div>,
+            )}
+          </div>
+        )}
+        {res && ql !== "help" && ql !== "konami" && (
           <div className="mt-1">
             {calc !== null && section("Calculator", row("calc", <AppIcon id="calculator" size={40} />, String(+calc.toPrecision(12)), q.trim() + " =", () => open("calculator")))}
             {res.apps.length > 0 && section("Applications", res.apps.map((id) => row(id, <AppIcon id={id} size={40} />, APPS[id].name, "Application", () => open(id))))}
@@ -137,6 +220,41 @@ export function Spotlight() {
         )}
         <div className="h-10" />
       </ScrollView>
+      {confetti && <Confetti />}
+    </div>
+  );
+}
+
+/** Simple CSS confetti — a swarm of colored squares falling from the top. */
+function Confetti() {
+  const colors = ["#ff3b30", "#ff9500", "#ffcc00", "#34c759", "#007aff", "#af52de", "#ff2d55"];
+  const pieces = Array.from({ length: 80 });
+  return (
+    <div className="pointer-events-none absolute inset-0 z-[50] overflow-hidden">
+      {pieces.map((_, i) => {
+        const left = Math.random() * 100;
+        const delay = Math.random() * 0.8;
+        const dur = 2.4 + Math.random() * 1.6;
+        const size = 6 + Math.random() * 6;
+        const color = colors[i % colors.length];
+        const rotate = Math.random() * 360;
+        return (
+          <div
+            key={i}
+            className="absolute top-[-12px] block"
+            style={{
+              left: `${left}%`,
+              width: size,
+              height: size * 0.6,
+              background: color,
+              transform: `rotate(${rotate}deg)`,
+              borderRadius: 1.5,
+              animation: `confettiFall ${dur}s linear ${delay}s forwards`,
+            }}
+          />
+        );
+      })}
+      <style>{`@keyframes confettiFall{0%{transform:translateY(-20px) rotate(0);opacity:1}100%{transform:translateY(640px) rotate(720deg);opacity:0}}`}</style>
     </div>
   );
 }

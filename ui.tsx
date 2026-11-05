@@ -296,7 +296,7 @@ export function Page({
             className="pointer-events-none absolute inset-x-[80px] flex flex-col items-center text-center"
             style={{ opacity: titleOp }}
           >
-            <span className="truncate text-[17px] font-semibold">{title}</span>
+            <span className="truncate text-[17px] font-semibold" style={{ letterSpacing: "-0.012em" }}>{title}</span>
             {subtitle}
           </div>
           <div className="z-10 flex min-w-[70px] items-center justify-end gap-4">{right}</div>
@@ -312,7 +312,7 @@ export function Page({
         }}
       >
         <div style={{ height: "calc(var(--safe-top) + 44px)" }} />
-        {large && title && <h1 className="px-4 pb-2 pt-0.5 text-[34px] font-bold leading-[41px] tracking-tight">{title}</h1>}
+        {large && title && <h1 className="px-4 pb-2 pt-0.5 text-[34px] font-bold leading-[41px]" style={{ letterSpacing: "-0.022em" }}>{title}</h1>}
         {children}
         {!noPad && <div style={{ height: "calc(var(--safe-bottom) + 28px)" }} />}
       </ScrollView>
@@ -464,6 +464,10 @@ export function Toggle({ on, onChange, disabled }: { on: boolean; onChange: (v: 
       disabled={disabled}
       onClick={(e) => {
         e.stopPropagation();
+        if (!disabled) {
+          // import inline to avoid cycle
+          import("./sound").then(({ sfx }) => (on ? sfx.toggleOff() : sfx.toggleOn()));
+        }
         onChange(!on);
       }}
       className={cx("relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors duration-200", disabled && "opacity-50")}
@@ -663,7 +667,7 @@ export function Sheet({
         style={{
           height: height ?? (full ? "calc(100% - var(--safe-top) - 10px)" : "calc(100% - var(--safe-top) - 10px)"),
           transform: `translateY(${shown ? dy : 100}${shown ? "px" : "%"})`,
-          transition: drag.current ? "none" : "transform 0.38s cubic-bezier(0.32, 0.72, 0, 1)",
+          transition: drag.current ? "none" : "transform 0.5s cubic-bezier(0.34, 1.3, 0.4, 1)",
         }}
       >
         <div

@@ -47,7 +47,7 @@ export function StatusBar({ light }: { light: boolean }) {
   const battery = useOS((s) => s.battery);
   const charging = useOS((s) => s.charging);
   const lowPower = useOS((s) => s.lowPower);
-  const dnd = useOS((s) => s.dnd);
+  const dnd = useOS((s) => s.dnd || s.focus !== "off");
   const call = useOS((s) => s.call);
   const fg = useOS((s) => s.foreground);
   const now = useNow(5000);
@@ -59,8 +59,8 @@ export function StatusBar({ light }: { light: boolean }) {
   if (!spec.island) {
     return (
       <div
-        className="pointer-events-none absolute inset-x-0 top-0 z-[70] flex items-center justify-between px-3 text-[12px] font-semibold"
-        style={{ height: spec.safeTop, color, background: toCall ? "#34c759" : undefined }}
+        className="pointer-events-none absolute inset-x-0 top-0 z-[70] flex items-center justify-between px-3 text-[12px] font-semibold tabular-nums"
+        style={{ height: spec.safeTop, color, background: toCall ? "#34c759" : undefined, letterSpacing: "-0.012em" }}
       >
         {toCall ? (
           <div className="mx-auto text-[13px] text-white">Touch to return to call · {call && call.state === "connected" ? fmtClock((Date.now() - call.startedAt) / 1000) : "calling…"}</div>
@@ -70,7 +70,7 @@ export function StatusBar({ light }: { light: boolean }) {
               {airplane ? <Plane size={12} /> : hasSignal ? <Signal color={color} /> : <span className="text-[11px]">No Service</span>}
               {wifi && <Wifi color={color} />}
             </div>
-            <div className="w-1/3 text-center text-[14px]">{time}</div>
+            <div className="w-1/3 text-center text-[14px]" data-clock>{time}</div>
             <div className="flex w-1/3 items-center justify-end gap-1">
               {dnd && <Moon size={11} fill={color} />}
               <span className="text-[11px] opacity-80">{battery}%</span>
@@ -84,8 +84,8 @@ export function StatusBar({ light }: { light: boolean }) {
 
   return (
     <div className="pointer-events-none absolute inset-x-0 top-0 z-[70] flex items-start justify-between" style={{ height: spec.safeTop, color }}>
-      <div className="mt-[11px] flex h-[37px] items-center gap-1 text-[16px] font-semibold tracking-tight" style={{ width: "36%", justifyContent: "center" }}>
-        <span>{time}</span>
+      <div className="mt-[11px] flex h-[37px] items-center gap-1 text-[16px] font-semibold tabular-nums" style={{ width: "36%", justifyContent: "center", letterSpacing: "-0.018em" }}>
+        <span data-clock>{time}</span>
         {dnd && <Moon size={12} fill={color} className="ml-0.5" />}
       </div>
       <div className="mt-[11px] flex h-[37px] items-center justify-center gap-[6px]" style={{ width: "36%" }}>
@@ -115,6 +115,7 @@ export function Island() {
   const call = useOS((s) => s.call);
   const timer = useOS((s) => s.timer);
   const music = useOS((s) => s.music);
+  const liveActivity = useOS((s) => s.liveActivity);
   const fg = useOS((s) => s.foreground);
   const expanded = useOS((s) => s.islandExpanded);
   const mic = useOS((s) => s.micActive);
@@ -123,16 +124,18 @@ export function Island() {
   const openApp = useOS((s) => s.openApp);
   useNow(250);
 
-  let kind: "call" | "timer" | "music" | null = null;
+  let kind: "call" | "timer" | "music" | "live" | null = null;
   if (call && fg !== "phone") kind = "call";
   else if (timer.status !== "idle" && fg !== "clock") kind = "timer";
   else if (music.active && fg !== "music") kind = "music";
+  else if (liveActivity && fg !== "health") kind = "live";
   const ex = expanded && !!kind;
   const track = TRACKS[music.idx];
   const left = timer.status === "running" ? Math.max(0, (timer.endAt - Date.now()) / 1000) : timer.left;
+  const laElapsed = liveActivity ? (Date.now() - liveActivity.startedAt) / 1000 : 0;
 
-  const w = ex ? 358 : kind ? 188 : 126;
-  const h = ex ? (kind === "music" ? 172 : 118) : 37;
+  const w = ex ? (kind === "live" ? 320 : 358) : kind ? 188 : 126;
+  const h = ex ? (kind === "music" ? 172 : kind === "live" ? 140 : 118) : 37;
 
   const stop = (fn: () => void) => (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -182,6 +185,12 @@ export function Island() {
                     />
                   ))}
                 </div>
+              </>
+            )}
+            {kind === "live" && liveActivity && (
+              <>
+                <div className="h-[18px] w-[18px] rounded-full" style={{ background: liveActivity.color }} />
+                <span className="text-[14px] font-medium" style={{ color: liveActivity.color }}>{liveActivity.title}</span>
               </>
             )}
           </div>
@@ -247,6 +256,43 @@ export function Island() {
               </div>
               <button className="flex h-12 w-12 items-center justify-center rounded-full bg-[#ff3b30]" onClick={stop(() => { useOS.getState().endCall(); set({ islandExpanded: false }); })}>
                 <PhoneOff size={22} fill="#fff" />
+              </button>
+            </div>
+          </div>
+        )}
+        {ex && kind === "live" && liveActivity && (
+          <div className="fade-in px-5 pt-4">
+            <div className="flex items-center justify-between" onClick={stop(() => { set({ islandExpanded: false }); openApp(liveActivity.kind === "workout" ? "health" : "findmy"); })}>
+              <div className="flex items-center gap-2">
+                <div className="h-[16px] w-[16px] rounded-full" style={{ background: liveActivity.color }} />
+                <div>
+                  <div className="text-[13px] text-white/60">{liveActivity.title}</div>
+                  <div className="text-[18px] font-semibold leading-tight">{liveActivity.subtitle}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <div className="text-[13px] tabular-nums text-white/60">{fmtClock(laElapsed)}</div>
+                {liveActivity.kind === "workout" && (
+                  <div className="text-[18px] font-semibold" style={{ color: liveActivity.color }}>
+                    {Math.round(laElapsed * 0.025 * 100) / 100} km
+                  </div>
+                )}
+                {liveActivity.kind === "delivery" && (
+                  <div className="text-[18px] font-semibold" style={{ color: liveActivity.color }}>
+                    {Math.round(liveActivity.progress)}%
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/15">
+              <div className="h-full rounded-full" style={{ width: `${liveActivity.kind === "workout" ? Math.min(100, (laElapsed / 1800) * 100) : liveActivity.progress}%`, background: liveActivity.color }} />
+            </div>
+            <div className="mt-3 flex justify-center">
+              <button
+                className="rounded-full bg-white/15 px-5 py-2 text-[14px] font-medium text-white"
+                onClick={stop(() => { useOS.getState().set({ liveActivity: null, islandExpanded: false }); useOS.getState().showToast(`${liveActivity.title} ended`); })}
+              >
+                End
               </button>
             </div>
           </div>

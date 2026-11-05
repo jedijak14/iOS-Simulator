@@ -4,6 +4,8 @@ import { persist } from "zustand/middleware";
 import { audioFlags, sfx } from "./sound";
 import { uid, clamp } from "./utils";
 import { useData } from "./data";
+import type { SharePayload } from "./share";
+import type { IconMode } from "./TintedIcons";
 
 export interface Rect {
   x: number;
@@ -80,45 +82,45 @@ export const DEFAULT_LAYOUT: LayoutItem[] = [
   { t: "widget", id: "weather", w: 4, h: 2 },
   { t: "widget", id: "calendar", w: 2, h: 2 },
   { t: "widget", id: "photos", w: 2, h: 2 },
+  { t: "app", id: "facetime" },
+  { t: "app", id: "calendar" },
+  { t: "app", id: "photos" },
+  { t: "app", id: "camera" },
   { t: "app", id: "mail" },
+  { t: "app", id: "notes" },
+  { t: "app", id: "reminders" },
   { t: "app", id: "clock" },
   { t: "app", id: "maps" },
-  { t: "app", id: "camera" },
-  { t: "app", id: "reminders" },
-  { t: "app", id: "notes" },
-  { t: "app", id: "stocks" },
   { t: "app", id: "wallet" },
-  { t: "widget", id: "clock", w: 2, h: 2 },
-  { t: "widget", id: "music", w: 2, h: 2 },
-  { t: "app", id: "photos" },
-  { t: "app", id: "weather" },
-  { t: "app", id: "calendar" },
+  { t: "app", id: "health" },
+  { t: "app", id: "fitness" },
+  { t: "app", id: "translate" },
+  { t: "app", id: "journal" },
+  { t: "app", id: "podcasts" },
+  { t: "app", id: "news" },
+  { t: "app", id: "tv" },
+  { t: "app", id: "books" },
+  { t: "app", id: "freeform" },
+  { t: "app", id: "home" },
+  { t: "app", id: "passwords" },
+  { t: "app", id: "files" },
+  { t: "app", id: "shortcuts" },
+  { t: "app", id: "tips" },
+  { t: "app", id: "findmy" },
   { t: "app", id: "appstore" },
   { t: "app", id: "settings" },
-  { t: "folder", id: "utilities", name: "Utilities", apps: ["calculator", "compass", "voicememos"] },
+  { t: "folder", id: "games", name: "Games", apps: ["twenty48", "snake", "minesweeper", "solitaire", "memory", "tictactoe", "flappybird"] },
+  { t: "folder", id: "utilities", name: "Utilities", apps: ["calculator", "compass", "voicememos", "magnifier"] },
 ];
 export const DEFAULT_DOCK = ["phone", "safari", "messages", "music"];
 export const DEFAULT_INSTALLED = [
-  "phone",
-  "safari",
-  "messages",
-  "music",
-  "mail",
-  "clock",
-  "maps",
-  "camera",
-  "reminders",
-  "notes",
-  "stocks",
-  "wallet",
-  "photos",
-  "weather",
-  "calendar",
-  "appstore",
-  "settings",
-  "calculator",
-  "compass",
-  "voicememos",
+  "phone","safari","messages","music","mail","clock","maps","camera",
+  "reminders","notes","stocks","wallet","photos","weather","calendar",
+  "appstore","settings","calculator","compass","voicememos",
+  "contacts","facetime","health","translate","files","shortcuts",
+  "journal","tips","findmy","magnifier",
+  "podcasts","news","books","tv","fitness","freeform","home","passwords",
+  "twenty48","snake","minesweeper","solitaire","memory","tictactoe","flappybird",
 ];
 
 export interface OSState {
@@ -143,9 +145,17 @@ export interface OSState {
   banner: Notif | null;
   alert: AlertSpec | null;
   sheet: SheetSpec | null;
+  shareSheet: SharePayload | null;
   ringing: Ringing | null;
   snooze: { label: string; at: number } | null;
   call: CallState | null;
+  ftCall: unknown | null;
+  liveActivity: { kind: "workout" | "delivery" | "sports"; title: string; subtitle: string; progress: number; color: string; startedAt: number } | null;
+  standby: boolean;
+  aod: boolean;
+  actionButton: "silent" | "camera" | "flashlight" | "shortcut" | "magnifier" | "voicememo";
+  splitView: { left: string; right: string } | null;
+  airdrop: { name: string; size: string; type: string; url?: string; progress: number; phase: "incoming" | "receiving" | "done" } | null;
   notifications: Notif[];
   flashlight: boolean;
   micActive: boolean;
@@ -167,6 +177,7 @@ export interface OSState {
   cellular: boolean;
   airplane: boolean;
   dnd: boolean;
+  focus: "off" | "dnd" | "personal" | "work" | "sleep";
   lowPower: boolean;
   orientationLock: boolean;
   wallpaper: string;
@@ -188,6 +199,7 @@ export interface OSState {
   battery: number;
   charging: boolean;
   welcomed: boolean;
+  iconMode: IconMode;
 
   set: (p: Partial<OSState>) => void;
   openApp: (id: string, rect?: Rect) => void;
@@ -253,9 +265,17 @@ export const useOS = create<OSState>()(
       banner: null,
       alert: null,
       sheet: null,
+      shareSheet: null,
       ringing: null,
       snooze: null,
       call: null,
+      ftCall: null,
+      liveActivity: null,
+      standby: false,
+      aod: false,
+      actionButton: "silent",
+      splitView: null,
+      airdrop: null,
       notifications: [],
       flashlight: false,
       micActive: false,
@@ -276,6 +296,7 @@ export const useOS = create<OSState>()(
       cellular: true,
       airplane: false,
       dnd: false,
+      focus: "off",
       lowPower: false,
       orientationLock: false,
       wallpaper: "aurora",
@@ -300,6 +321,7 @@ export const useOS = create<OSState>()(
       battery: 87,
       charging: false,
       welcomed: false,
+      iconMode: "default",
 
       set: (p) => set(p),
       touch: () => set({ lastActivity: Date.now() }),
@@ -307,6 +329,7 @@ export const useOS = create<OSState>()(
       openApp: (id, rect) => {
         const s = get();
         if (s.power !== "on" || s.locked) return;
+        if (s.foreground !== id) sfx.appOpen();
         set({
           running: [id, ...s.running.filter((x) => x !== id)],
           foreground: id,
@@ -324,6 +347,7 @@ export const useOS = create<OSState>()(
         const s = get();
         if (s.editMode) return set({ editMode: false });
         const already = s.foreground === null && !s.switcher && !s.cc && !s.shade && !s.spotlight && !s.siri;
+        if (s.foreground !== null) sfx.appClose();
         set({
           foreground: null,
           switcher: false,
@@ -399,7 +423,14 @@ export const useOS = create<OSState>()(
           banner: null,
           alert: null,
           sheet: null,
+          shareSheet: null,
           call: null,
+          ftCall: null,
+          liveActivity: null,
+          standby: false,
+          aod: false,
+          splitView: null,
+          airdrop: null,
           flashlight: false,
           micActive: false,
           camActive: false,
@@ -548,6 +579,12 @@ export const useOS = create<OSState>()(
         } else if (s.autoLock > 0 && s.screenOn && s.locked && now - s.lastActivity > Math.max(20, Math.min(s.autoLock, 60)) * 1000 && !s.ringing) {
           get().lock();
         }
+        // live activity progress (delivery, sports)
+        if (s.liveActivity && s.liveActivity.kind !== "workout" && now - s.liveActivity.startedAt > 5_000) {
+          const step = (now - s.liveActivity.startedAt) / 1000;
+          const progress = Math.min(100, step * 2);
+          set({ liveActivity: { ...s.liveActivity, progress } });
+        }
       },
 
       startCall: (name, number) => {
@@ -581,7 +618,20 @@ export const useOS = create<OSState>()(
     }),
     {
       name: "ios-sim-os",
-      version: 2,
+      version: 4,
+      // Migrate older persisted state to include new fields (focus, etc.)
+      migrate: (persisted: unknown, fromVersion: number) => {
+        const s = (persisted || {}) as Partial<OSState>;
+        // v2 → v3: ensure focus field exists and matches dnd
+        if (fromVersion < 3) {
+          if (s.focus === undefined) s.focus = s.dnd ? "dnd" : "off";
+        }
+        // v3 → v4: ensure iconMode field exists (default "default")
+        if (fromVersion < 4) {
+          if (s.iconMode === undefined) s.iconMode = "default";
+        }
+        return s;
+      },
       partialize: (s) => ({
         appearance: s.appearance,
         brightness: s.brightness,
@@ -594,6 +644,7 @@ export const useOS = create<OSState>()(
         cellular: s.cellular,
         airplane: s.airplane,
         dnd: s.dnd,
+        focus: s.focus,
         lowPower: s.lowPower,
         orientationLock: s.orientationLock,
         wallpaper: s.wallpaper,
@@ -615,6 +666,9 @@ export const useOS = create<OSState>()(
         battery: s.battery,
         charging: s.charging,
         welcomed: s.welcomed,
+        iconMode: s.iconMode,
+        aod: s.aod,
+        actionButton: s.actionButton,
       }),
     },
   ),

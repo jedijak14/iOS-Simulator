@@ -30,14 +30,47 @@ const TX = [
 export default function WalletApp() {
   const [sel, setSel] = useState<string | null>(null);
   const [pay, setPay] = useState<"idle" | "face" | "hold" | "done">("idle");
-  const card = CARDS.find((c) => c.id === sel);
+  const [cards, setCards] = useState<Card[]>(() => {
+    try {
+      const stored = localStorage.getItem("ios-sim-wallet-cards");
+      return stored ? [...CARDS, ...JSON.parse(stored)] : CARDS;
+    } catch {
+      return CARDS;
+    }
+  });
+  const [addingPass, setAddingPass] = useState(false);
+  const [newPass, setNewPass] = useState({ name: "", sub: "", kind: "event" as "event" | "flight" | "library" });
+  const card = cards.find((c) => c.id === sel);
+
+  const savePasses = (next: Card[]) => {
+    const custom = next.filter((c) => !CARDS.some((b) => b.id === c.id));
+    setCards(next);
+    try { localStorage.setItem("ios-sim-wallet-cards", JSON.stringify(custom)); } catch { /* ignore */ }
+  };
+
+  const addPass = () => {
+    if (!newPass.name.trim()) return;
+    const id = "p" + Date.now();
+    const colors: Record<string, { bg: string; fg: string }> = {
+      event: { bg: "linear-gradient(135deg,#7c3aed,#4c1d95)", fg: "#fff" },
+      flight: { bg: "linear-gradient(135deg,#0ea5e9,#1d4ed8)", fg: "#fff" },
+      library: { bg: "linear-gradient(135deg,#16a34a,#14532d)", fg: "#fff" },
+    };
+    const c = colors[newPass.kind];
+    const pass: Card = { id, name: newPass.name, sub: newPass.sub || (newPass.kind === "event" ? "Event Ticket" : newPass.kind === "flight" ? "Boarding Pass" : "Library Card"), last: "", bg: c.bg, fg: c.fg, kind: "pass" };
+    savePasses([...cards, pass]);
+    setNewPass({ name: "", sub: "", kind: "event" });
+    setAddingPass(false);
+    sfx.success();
+    useOS.getState().showToast("Pass added to Wallet");
+  };
 
   const startPay = () => {
     setPay("face");
     setTimeout(() => setPay("hold"), 900);
     setTimeout(() => {
       setPay("done");
-      sfx.charge();
+      sfx.paySuccess();
     }, 2500);
     setTimeout(() => setPay("idle"), 3800);
   };
@@ -45,8 +78,8 @@ export default function WalletApp() {
   return (
     <div className="force-dark relative h-full bg-black text-white">
       <Page title="Wallet" bg="bg-black" noPad>
-        <div className="relative mx-4" style={{ height: sel ? 220 : 90 + (CARDS.length - 1) * 62 + 140 }}>
-          {CARDS.map((c, i) => {
+        <div className="relative mx-4" style={{ height: sel ? 220 : 90 + (cards.length - 1) * 62 + 140 }}>
+          {cards.map((c, i) => {
             const selected = c.id === sel;
             const top = sel ? (selected ? 0 : 240 + i * 8) : i * 62;
             return (
@@ -89,8 +122,55 @@ export default function WalletApp() {
           </div>
         )}
         {card && card.kind === "pass" && <div className="px-4 pt-2 text-center text-[14px] text-white/60">Hold your iPhone near the reader to scan this pass.</div>}
-        {!sel && <div className="pb-24 text-center text-[13px] text-white/40">Double-click the side button to pay · tap a card to open it</div>}
+        {!sel && (
+          <div className="px-4 pb-24">
+            <button onClick={() => setAddingPass(true)} className="mt-4 w-full rounded-full border border-white/20 py-2.5 text-[15px] font-semibold text-white active:bg-white/10">
+              + Add Pass
+            </button>
+            <div className="mt-3 text-center text-[13px] text-white/40">Double-click the side button to pay · tap a card to open it</div>
+          </div>
+        )}
       </Page>
+
+      {addingPass && (
+        <div className="fade-in absolute inset-0 z-40 flex items-end bg-black/60 backdrop-blur-sm" onClick={() => setAddingPass(false)}>
+          <div className="w-full rounded-t-[24px] bg-[#1c1c1e] px-5 pb-10 pt-6 text-white" onClick={(e) => e.stopPropagation()} style={{ paddingBottom: "calc(var(--safe-bottom) + 24px)" }}>
+            <div className="mx-auto mb-4 h-[5px] w-10 rounded-full bg-white/30" />
+            <div className="mb-4 text-[20px] font-bold" style={{ letterSpacing: "-0.02em" }}>Add a Pass</div>
+            <div className="mb-3 flex gap-2">
+              {([
+                { id: "event", label: "Event" },
+                { id: "flight", label: "Boarding" },
+                { id: "library", label: "Library" },
+              ] as const).map((k) => (
+                <button
+                  key={k.id}
+                  onClick={() => setNewPass({ ...newPass, kind: k.id })}
+                  className={`flex-1 rounded-xl py-2.5 text-[14px] font-semibold ${newPass.kind === k.id ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                >
+                  {k.label}
+                </button>
+              ))}
+            </div>
+            <input
+              value={newPass.name}
+              onChange={(e) => setNewPass({ ...newPass, name: e.target.value })}
+              placeholder="Pass name (e.g. Concert Ticket)"
+              className="mb-2 w-full rounded-xl bg-white/10 px-4 py-3 text-[16px] outline-none placeholder:text-white/40"
+            />
+            <input
+              value={newPass.sub}
+              onChange={(e) => setNewPass({ ...newPass, sub: e.target.value })}
+              placeholder="Subtitle (e.g. Seat 12A · Section C)"
+              className="mb-4 w-full rounded-xl bg-white/10 px-4 py-3 text-[16px] outline-none placeholder:text-white/40"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setAddingPass(false)} className="flex-1 rounded-full bg-white/10 py-3 text-[16px] font-semibold">Cancel</button>
+              <button onClick={addPass} disabled={!newPass.name.trim()} className="flex-1 rounded-full bg-white py-3 text-[16px] font-semibold text-black disabled:opacity-40">Add Pass</button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {pay !== "idle" && (
         <div className="fade-in absolute inset-0 z-40 flex flex-col items-center justify-end bg-black/60 backdrop-blur-sm" onClick={() => setPay("idle")}>

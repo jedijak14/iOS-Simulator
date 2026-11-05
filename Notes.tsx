@@ -3,7 +3,7 @@ import { ChevronLeft, Pin, PinOff, Share, SquarePen, StickyNote, Trash2 } from "
 import { useData, patchData, newId, type Note } from "../os/data";
 import { Empty, Group, NavBtn, Page, SearchField, SwipeRow } from "../os/ui";
 import { useAppAction } from "../os/actions";
-import { useOS } from "../os/store";
+import { share } from "../os/share";
 
 function groupLabel(at: number) {
   const d = (Date.now() - at) / 86400000;
@@ -54,10 +54,7 @@ function Editor({ note, onBack }: { note: Note; onBack: () => void }) {
           <>
             <button
               className="text-ios-blue"
-              onClick={() => {
-                void navigator.clipboard?.writeText(note.text).catch(() => undefined);
-                useOS.getState().showToast("Note copied to clipboard");
-              }}
+              onClick={() => share({ text: note.text, subject: note.text.split("\n")[0].slice(0, 60) })}
             >
               <Share size={22} />
             </button>

@@ -4,6 +4,7 @@ import { useOS, isOnline } from "../os/store";
 import { useData, patchData, newId } from "../os/data";
 import { Group, NavBtn, Page, Row, ScrollView, Sheet, Spinner, Segmented } from "../os/ui";
 import { useAppAction } from "../os/actions";
+import { share } from "../os/share";
 
 const FAVS: { title: string; url: string; color: string; letter: string }[] = [
   { title: "Wikipedia", url: "wiki:Main Page", color: "#6b7280", letter: "W" },
@@ -275,7 +276,6 @@ export default function SafariApp() {
   }, [text, editing, online]);
 
   const url = tab.url;
-  const isMarked = bookmarks.some((b) => b.url === url);
   const label = url ? (url.startsWith("wiki:") ? "en.wikipedia.org" : url.startsWith("search:") ? "Wikipedia Search" : safeHost(url)) : "Search or enter website name";
 
   let content: React.ReactNode;
@@ -384,14 +384,9 @@ export default function SafariApp() {
           <button disabled={n.idx >= n.stack.length - 1} onClick={() => step(1)} className="disabled:opacity-30"><ChevronRight size={26} /></button>
           <button
             onClick={() =>
-              useOS.getState().showSheet({
-                title: label,
-                actions: [
-                  { text: "Copy Link", onPress: () => { void navigator.clipboard?.writeText(realUrl(url)).catch(() => undefined); useOS.getState().showToast("Link copied"); } },
-                  { text: isMarked ? "Remove Bookmark" : "Add Bookmark", onPress: () => url && patchData((s) => ({ bookmarks: isMarked ? s.bookmarks.filter((b) => b.url !== url) : [{ title: titleOf(url), url }, ...s.bookmarks] })) },
-                  { text: "Open in Browser", onPress: () => url && window.open(realUrl(url), "_blank") },
-                  { text: "Cancel", style: "cancel" },
-                ],
+              share({
+                text: url ? realUrl(url) : "Safari",
+                subject: label,
               })
             }
           >

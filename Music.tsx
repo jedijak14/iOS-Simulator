@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ChevronDown, Library, ListMusic, Music2, Pause, Play, Repeat, Repeat1, Search, Shuffle, SkipBack, SkipForward, Volume1, Volume2, Radio } from "lucide-react";
+import { ChevronDown, Library, ListMusic, Music2, Pause, Play, Quote, Repeat, Repeat1, Search, Shuffle, SkipBack, SkipForward, Volume1, Volume2, Radio } from "lucide-react";
 import { useOS, useNow } from "../os/store";
 import { TRACKS, artGradient, musicNext, musicPlay, musicPos, musicPrev, musicSeek, musicToggle, type Track } from "../os/music";
 import { Page, SearchField, Sheet, TabBar, ScrollView, Segmented } from "../os/ui";
 import { fmtClock } from "../os/utils";
+import { LyricsView } from "./MusicLyrics";
 
 type Tab = "now" | "library" | "search";
 
@@ -45,6 +46,7 @@ function NowPlaying({ open, onClose }: { open: boolean; onClose: () => void }) {
   const music = useOS((s) => s.music);
   const volume = useOS((s) => s.volume);
   const set = useOS((s) => s.set);
+  const [showLyrics, setShowLyrics] = useState(false);
   useNow(250);
   const t = TRACKS[music.idx];
   const pos = musicPos();
@@ -55,9 +57,15 @@ function NowPlaying({ open, onClose }: { open: boolean; onClose: () => void }) {
           <ChevronDown size={26} />
         </button>
         <div className="mt-5 flex flex-1 items-center justify-center">
-          <div className="transition-transform duration-500" style={{ transform: music.playing ? "scale(1)" : "scale(0.84)", width: "100%", maxWidth: 330 }}>
-            <Art t={t} size="100%" className="aspect-square !rounded-[14px] shadow-2xl" />
-          </div>
+          {showLyrics ? (
+            <div className="w-full" style={{ maxWidth: 330, height: "100%" }}>
+              <LyricsView className="!h-full !text-left" />
+            </div>
+          ) : (
+            <div className="transition-transform duration-500" style={{ transform: music.playing ? "scale(1)" : "scale(0.84)", width: "100%", maxWidth: 330 }}>
+              <Art t={t} size="100%" className="aspect-square !rounded-[14px] shadow-2xl" />
+            </div>
+          )}
         </div>
         <div className="mt-6">
           <div className="truncate text-[22px] font-semibold">{t.title}</div>
@@ -102,6 +110,14 @@ function NowPlaying({ open, onClose }: { open: boolean; onClose: () => void }) {
             style={{ color: music.repeat !== "off" ? "#fff" : undefined, background: music.repeat !== "off" ? "rgba(255,255,255,.18)" : undefined }}
           >
             {music.repeat === "one" ? <Repeat1 size={22} /> : <Repeat size={22} />}
+          </button>
+          <button
+            onClick={() => setShowLyrics((v) => !v)}
+            className="rounded-lg p-2"
+            style={{ color: showLyrics ? "#fff" : undefined, background: showLyrics ? "rgba(255,255,255,.18)" : undefined }}
+            title="Lyrics"
+          >
+            <Quote size={22} />
           </button>
           <button className="rounded-lg p-2" onClick={() => useOS.getState().showToast("Queue: " + TRACKS.map((x) => x.title).join(", "))}>
             <ListMusic size={22} />

@@ -4,7 +4,7 @@ import { useOS } from "../os/store";
 import { useData, patchData, newId, contactName, type Thread, type Msg } from "../os/data";
 import { Avatar, Group, NavBtn, Page, SearchField, SwipeRow, ScrollView } from "../os/ui";
 import { sfx } from "../os/sound";
-import { useAppAction } from "../os/actions";
+import { useAppAction, sendAction } from "../os/actions";
 import { relTime } from "../os/utils";
 
 const REPLIES: [RegExp, string[]][] = [
@@ -101,7 +101,7 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
           <Avatar name={title} hue={mem[0]?.hue ?? 210} size={36} />
           <div className="mt-0.5 flex items-center text-[11px]">{title} <ChevronLeft size={10} className="rotate-180 text-ios-label3" /></div>
         </div>
-        <NavBtn onClick={() => useOS.getState().showToast("FaceTime isn't available in the simulator")}>
+        <NavBtn onClick={() => { onBack(); setTimeout(() => { useOS.getState().openApp("facetime"); sendAction("facetime", "to:" + (mem[0]?.id ?? "")); }, 60); }}>
           <Video size={24} />
         </NavBtn>
       </div>

@@ -92,6 +92,7 @@ export default function AppStoreApp() {
 
   const all = Object.keys(APPS);
   const games = all.filter((id) => APPS[id].category === "Entertainment" && !APPS[id].system);
+  const thirdParty = ["spotify", "youtube", "instagram", "snapchat", "duckduckgo"];
   const featured = "twenty48";
 
   return (
@@ -121,7 +122,7 @@ export default function AppStoreApp() {
               </div>
               {all.slice(0, 7).map(row)}
               <div className="mb-1 mt-7 text-[22px] font-bold">More to Explore</div>
-              {all.slice(7, 14).map(row)}
+              {thirdParty.map(row)}
             </div>
           </Page>
         )}
@@ -130,6 +131,8 @@ export default function AppStoreApp() {
             <div className="px-4">
               <div className="mb-1 text-[22px] font-bold">Popular Games</div>
               {games.map(row)}
+              <div className="mb-1 mt-6 text-[22px] font-bold">Made by Apple</div>
+              {all.filter((id) => APPS[id].system && APPS[id].category === "Entertainment").map(row)}
               <div className="mt-4 text-[13px] text-ios-label2">More games coming soon.</div>
             </div>
           </Page>
@@ -138,6 +141,8 @@ export default function AppStoreApp() {
           <Page title="Apps" bg="bg-ios-bg">
             <div className="px-4">
               <div className="mb-1 text-[22px] font-bold">Top Free Apps</div>
+              {thirdParty.map(row)}
+              <div className="mb-1 mt-6 text-[22px] font-bold">Apple Apps</div>
               {all.filter((id) => APPS[id].system).map(row)}
             </div>
           </Page>
