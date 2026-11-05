@@ -99,14 +99,14 @@ body {
 
 /* Tighter tracking for large display text (mimics SF Pro Display) */
 .ios-screen h1,
-.ios-screen .text-[34px],
-.ios-screen .text-[40px],
-.ios-screen .text-[44px],
-.ios-screen .text-[28px] {
+.ios-screen .text-\[34px\],
+.ios-screen .text-\[40px\],
+.ios-screen .text-\[44px\],
+.ios-screen .text-\[28px\] {
   letter-spacing: -0.021em;
 }
-.ios-screen .text-[22px],
-.ios-screen .text-[20px] {
+.ios-screen .text-\[22px\],
+.ios-screen .text-\[20px\] {
   letter-spacing: -0.015em;
 }
 /* Tabular numerals for time, battery, and metric values */
