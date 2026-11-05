@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { Calendar, Check, ChevronLeft, Flag, ListChecks, Plus, Sun, Inbox } from "lucide-react";
+import { Calendar, Check, ChevronLeft, Flag, ListChecks, Plus, Sun, Inbox, Bell, Clock, X } from "lucide-react";
 import { useData, patchData, newId, type Reminder } from "../os/data";
-import { Group, NavBtn, Page, Row, Sheet, SwipeRow } from "../os/ui";
+import { Group, NavBtn, Page, Row, Sheet, SwipeRow, Segmented, WheelPicker } from "../os/ui";
 import { sameDay } from "../os/utils";
 import { useAppAction } from "../os/actions";
 import { useOS } from "../os/store";
@@ -27,6 +27,7 @@ export default function RemindersApp() {
   const [name, setName] = useState("");
   const [color, setColor] = useState(COLORS[4]);
   const [focusId, setFocusId] = useState<string | null>(null);
+  const [editId, setEditId] = useState<string | null>(null);
   const last = useRef<string | null>(null);
   if (view) last.current = view;
 
@@ -160,8 +161,14 @@ export default function RemindersApp() {
                       className="w-full bg-transparent text-[17px] outline-none"
                       style={{ textDecoration: r.done ? "line-through" : "none", opacity: r.done ? 0.5 : 1 }}
                     />
-                    {r.due && <div className="text-[13px]" style={{ color: r.due < Date.now() && !r.done ? "var(--ios-red)" : "var(--ios-label2)" }}>{dueText(r.due)}</div>}
+                    {r.due && <button onClick={() => setEditId(r.id)} className="text-[13px]" style={{ color: r.due < Date.now() && !r.done ? "var(--ios-red)" : "var(--ios-label2)" }}>{dueText(r.due)}</button>}
+                    {!r.due && <button onClick={() => setEditId(r.id)} className="mt-1 flex items-center gap-1 text-[12px] text-ios-label3">
+                      <Bell size={11} /> Add date
+                    </button>}
                   </div>
+                  <button onClick={() => setEditId(r.id)} className="mt-0.5 px-2 text-ios-label3">
+                    <Clock size={16} />
+                  </button>
                   {r.flag && <Flag size={16} fill="var(--ios-orange)" className="mt-1 text-ios-orange" />}
                 </div>
               </SwipeRow>
@@ -204,6 +211,116 @@ export default function RemindersApp() {
           </div>
         </Page>
       </Sheet>
+
+      <Sheet open={!!editId} onClose={() => setEditId(null)} height="60%">
+        <EditReminder id={editId} accent={accent} onClose={() => setEditId(null)} />
+      </Sheet>
     </div>
+  );
+}
+
+function EditReminder({ id, accent, onClose }: { id: string | null; accent: string; onClose: () => void }) {
+  const r = useData((s) => s.reminders.find((x) => x.id === id));
+  if (!r) return null;
+
+  const upd = (p: Partial<Reminder>) => patchData((s) => ({ reminders: s.reminders.map((x) => (x.id === r.id ? { ...x, ...p } : x)) }));
+  const del = () => { patchData((s) => ({ reminders: s.reminders.filter((x) => x.id !== r.id) })); onClose(); };
+
+  const dueMs = r.due ?? Date.now();
+  const due = new Date(dueMs);
+  const [ampm, setAmpm] = useState<"AM" | "PM">(due.getHours() >= 12 ? "PM" : "AM");
+  const hours24 = due.getHours();
+  const hours12 = hours24 % 12 === 0 ? 12 : hours24 % 12;
+
+  const setDateTime = (date: Date, h12: number, m: number, ap: "AM" | "PM") => {
+    const h24 = ap === "PM" ? (h12 === 12 ? 12 : h12 + 12) : (h12 === 12 ? 0 : h12);
+    date.setHours(h24, m, 0, 0);
+    upd({ due: date.getTime(), notified: false });
+  };
+
+  return (
+    <Page
+      title="Details"
+      large={false}
+      left={<NavBtn onClick={onClose}>Close</NavBtn>}
+      right={<NavBtn bold onClick={onClose}>Done</NavBtn>}
+    >
+      <Group>
+        <input
+          value={r.text}
+          onChange={(e) => upd({ text: e.target.value })}
+          placeholder="Reminder"
+          className="ios-row block w-full bg-transparent px-4 text-[17px] outline-none"
+        />
+      </Group>
+      <Group header="Date & Time">
+        <div className="px-4 py-3">
+          <Segmented
+            options={[
+              { id: "today", label: "Today" },
+              { id: "tomorrow", label: "Tomorrow" },
+              { id: "weekend", label: "This Weekend" },
+              { id: "pick", label: "Pick Date" },
+            ]}
+            value={(() => {
+              if (!r.due) return "pick";
+              if (sameDay(new Date(r.due), new Date())) return "today";
+              if (sameDay(new Date(r.due), new Date(Date.now() + 86400000))) return "tomorrow";
+              return "pick";
+            })()}
+            onChange={(v) => {
+              const d = new Date();
+              if (v === "today") { d.setHours(18, 0, 0, 0); upd({ due: d.getTime(), notified: false }); }
+              else if (v === "tomorrow") { d.setDate(d.getDate() + 1); d.setHours(18, 0, 0, 0); upd({ due: d.getTime(), notified: false }); }
+              else if (v === "weekend") { const day = d.getDay(); d.setDate(d.getDate() + ((6 - day + 7) % 7 || 7)); d.setHours(10, 0, 0, 0); upd({ due: d.getTime(), notified: false }); }
+            }}
+            className="mb-3"
+          />
+          {r.due ? (
+            <div className="flex items-center justify-between rounded-xl bg-ios-fill p-3" style={{ background: "var(--ios-fill)" }}>
+              <div className="text-[15px]">{new Date(r.due).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })}</div>
+              <div className="flex items-center gap-2">
+                <WheelPicker
+                  items={Array.from({ length: 12 }, (_, i) => String(i + 1))}
+                  value={hours12 - 1}
+                  onChange={(v) => setDateTime(new Date(dueMs), v + 1, due.getMinutes(), ampm)}
+                  width={56}
+                  loop
+                />
+                <span className="text-[18px]">:</span>
+                <WheelPicker
+                  items={["00", "01", "02", "03", "04", "05", "06", "07", "08", "09", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23", "24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "35", "36", "37", "38", "39", "40", "41", "42", "43", "44", "45", "46", "47", "48", "49", "50", "51", "52", "53", "54", "55", "56", "57", "58", "59"]}
+                  value={due.getMinutes()}
+                  onChange={(v) => setDateTime(new Date(dueMs), hours12, v, ampm)}
+                  width={56}
+                  loop
+                />
+                <Segmented
+                  options={[{ id: "AM", label: "AM" }, { id: "PM", label: "PM" }]}
+                  value={ampm}
+                  onChange={(v) => { setAmpm(v as "AM" | "PM"); setDateTime(new Date(dueMs), hours12, due.getMinutes(), v as "AM" | "PM"); }}
+                />
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl bg-ios-fill p-4 text-center text-[14px] text-ios-label2" style={{ background: "var(--ios-fill)" }}>
+              No date set
+            </div>
+          )}
+          {r.due && (
+            <button onClick={() => upd({ due: undefined })} className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-xl bg-ios-cell py-2.5 text-[15px] text-ios-red">
+              <X size={14} /> Remove Date
+            </button>
+          )}
+        </div>
+      </Group>
+      <Group>
+        <Row icon={Flag} iconBg="#ff9500" title="Flag" right={<span style={{ color: r.flag ? accent : "var(--ios-label3)" }}>{r.flag ? "On" : "Off"}</span>} onClick={() => upd({ flag: !r.flag })} />
+        <Row icon={Bell} iconBg="#ff3b30" title="Remind me on a day" right={<span style={{ color: r.due ? accent : "var(--ios-label3)" }}>{r.due ? "On" : "Off"}</span>} onClick={() => !r.due && upd({ due: (() => { const d = new Date(); d.setHours(18, 0, 0, 0); return d.getTime(); })(), notified: false })} />
+      </Group>
+      <Group>
+        <Row title={<span className="text-ios-red">Delete Reminder</span>} onClick={del} />
+      </Group>
+    </Page>
   );
 }

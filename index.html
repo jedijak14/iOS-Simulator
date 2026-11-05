@@ -4,9 +4,82 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>iOS Simulator — iPhone in your browser</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Inter+Tight:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* Loading state — shown until React mounts */
+      #boot {
+        position: fixed; inset: 0;
+        display: flex; flex-direction: column;
+        align-items: center; justify-content: center;
+        background: radial-gradient(1200px 800px at 50% 30%, #2b2d3a 0%, #14151c 60%, #0b0b10 100%);
+        color: #fff; font-family: -apple-system, system-ui, sans-serif;
+        z-index: 9999;
+      }
+      #boot .logo {
+        width: 64px; height: 64px; border-radius: 14px;
+        background: linear-gradient(135deg, #0a84ff, #5ac8fa);
+        display: flex; align-items: center; justify-content: center;
+        font-size: 32px; font-weight: 700; color: #fff;
+        box-shadow: 0 8px 24px rgba(10, 132, 255, 0.4);
+        animation: pulse 1.5s ease-in-out infinite;
+      }
+      #boot .text { margin-top: 18px; font-size: 15px; opacity: 0.7; }
+      #boot .hint { margin-top: 24px; font-size: 13px; opacity: 0.4; max-width: 320px; text-align: center; line-height: 1.5; }
+      @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.05); } }
+      /* noscript / direct-open fallback */
+      #fallback {
+        display: none;
+        position: fixed; inset: 0;
+        background: #1a1c22; color: #fff;
+        font-family: -apple-system, system-ui, sans-serif;
+        padding: 32px; text-align: center;
+      }
+      #fallback h1 { font-size: 22px; margin-bottom: 12px; }
+      #fallback p { font-size: 14px; opacity: 0.7; line-height: 1.6; max-width: 480px; margin: 8px auto; }
+      #fallback code { background: #2a2c32; padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+    </style>
   </head>
   <body>
+    <div id="boot">
+      <div class="logo"></div>
+      <div class="text">Loading iOS Simulator…</div>
+      <div class="hint">If this doesn't go away, you may be opening the source file directly. Use <code>ios-simulator.html</code> (the single-file build) instead, or run <code>npm run dev</code> from the project folder.</div>
+    </div>
+    <div id="fallback">
+      <h1>JavaScript Required</h1>
+      <p>This simulator needs JavaScript to run. Please enable JavaScript in your browser.</p>
+      <p>If you opened this file directly from disk, the source project won't work without a build step. Open <code>ios-simulator.html</code> (the single-file build) instead — it works in any browser with no install.</p>
+      <p>To run the source project: <code>cd ios-simulator && npm install && npm run dev</code></p>
+    </div>
     <div id="root"></div>
+    <noscript>
+      <style> #boot { display: none; } #fallback { display: flex; flex-direction: column; align-items: center; justify-content: center; } </style>
+    </noscript>
     <script type="module" src="/src/main.tsx"></script>
+    <script>
+      // Hide boot loader once React has mounted (gives a max 8s grace period)
+      window.addEventListener("load", () => {
+        setTimeout(() => {
+          const root = document.getElementById("root");
+          const boot = document.getElementById("boot");
+          if (root && root.children.length > 0 && boot) boot.style.display = "none";
+        }, 100);
+        // Safety: if React hasn't mounted after 8s, show the fallback
+        setTimeout(() => {
+          const root = document.getElementById("root");
+          if (root && root.children.length === 0) {
+            const fb = document.getElementById("fallback");
+            const boot = document.getElementById("boot");
+            if (fb) fb.style.display = "flex";
+            if (boot) boot.style.display = "none";
+          }
+        }, 8000);
+      });
+    </script>
   </body>
 </html>

@@ -19,7 +19,21 @@ import SettingsApp from "../apps/Settings";
 import CalculatorApp from "../apps/Calculator";
 import CompassApp from "../apps/Compass";
 import VoiceMemosApp from "../apps/VoiceMemos";
+import ContactsApp from "../apps/Contacts";
+import FaceTimeApp from "../apps/FaceTime";
+import HealthApp from "../apps/Health";
+import TranslateApp from "../apps/Translate";
+import FilesApp from "../apps/Files";
+import ShortcutsApp from "../apps/Shortcuts";
+import JournalApp from "../apps/Journal";
+import TipsApp from "../apps/Tips";
+import FindMyApp from "../apps/FindMy";
+import MagnifierApp from "../apps/Magnifier";
 import { Twenty48App, SnakeApp } from "../apps/Games";
+import { MinesweeperApp, SolitaireApp, MemoryApp, TicTacToeApp, FlappyBirdApp } from "../apps/MoreGames";
+import { SpotifyApp, YouTubeApp, InstagramApp, StubApp } from "../apps/ThirdParty";
+import { PodcastsApp, NewsApp, BooksApp, TVApp } from "../apps/MediaApps";
+import { FitnessApp, FreeformApp, HomeApp, PasswordsApp } from "../apps/UtilityApps";
 import { sendAction } from "./actions";
 
 export interface AppDef {
@@ -91,8 +105,40 @@ export const APPS: Record<string, AppDef> = {
   calculator: { id: "calculator", name: "Calculator", Comp: CalculatorApp, light: true, category: "Utilities", system: true },
   compass: { id: "compass", name: "Compass", Comp: CompassApp, light: true, category: "Utilities", system: true },
   voicememos: { id: "voicememos", name: "Voice Memos", Comp: VoiceMemosApp, category: "Utilities", system: true, actions: [{ label: "New Recording", action: "record" }] },
+  contacts: { id: "contacts", name: "Contacts", Comp: ContactsApp, category: "Social", system: true },
+  facetime: { id: "facetime", name: "FaceTime", Comp: FaceTimeApp, category: "Social", system: true },
+  health: { id: "health", name: "Health", Comp: HealthApp, category: "Health & Fitness", system: true },
+  translate: { id: "translate", name: "Translate", Comp: TranslateApp, category: "Reference", system: true },
+  files: { id: "files", name: "Files", Comp: FilesApp, category: "Utilities", system: true },
+  shortcuts: { id: "shortcuts", name: "Shortcuts", Comp: ShortcutsApp, category: "Productivity & Finance", system: true },
+  journal: { id: "journal", name: "Journal", Comp: JournalApp, category: "Health & Fitness", system: true },
+  tips: { id: "tips", name: "Tips", Comp: TipsApp, category: "Reference", system: true },
+  findmy: { id: "findmy", name: "Find My", Comp: FindMyApp, category: "Utilities", system: true },
+  magnifier: { id: "magnifier", name: "Magnifier", Comp: MagnifierApp, light: true, category: "Utilities", system: true },
   twenty48: { id: "twenty48", name: "2048", Comp: Twenty48App, category: "Entertainment", system: false, blurb: "Join the tiles, reach 2048" },
   snake: { id: "snake", name: "Snake", Comp: SnakeApp, category: "Entertainment", system: false, blurb: "The classic arcade game" },
+  // Third-party apps (dynamic install from App Store)
+  spotify: { id: "spotify", name: "Spotify", Comp: SpotifyApp, category: "Entertainment", system: false, blurb: "Music and Podcasts" },
+  youtube: { id: "youtube", name: "YouTube", Comp: YouTubeApp, category: "Entertainment", system: false, blurb: "Watch, listen, stream" },
+  instagram: { id: "instagram", name: "Instagram", Comp: InstagramApp, category: "Social", system: false, blurb: "Connect with friends" },
+  snapchat: { id: "snapchat", name: "Snapchat", Comp: () => <StubApp name="Snapchat" color="#fffc00" />, category: "Social", system: false, blurb: "Share the moment" },
+  duckduckgo: { id: "duckduckgo", name: "DuckDuckGo", Comp: () => <StubApp name="DuckDuckGo" color="#de5833" />, category: "Utilities", system: false, blurb: "Privacy browser" },
+  // Media apps
+  podcasts: { id: "podcasts", name: "Podcasts", Comp: PodcastsApp, category: "Entertainment", system: true },
+  news: { id: "news", name: "News", Comp: NewsApp, category: "Information & Reading", system: true },
+  books: { id: "books", name: "Books", Comp: BooksApp, category: "Reference", system: true },
+  tv: { id: "tv", name: "TV", Comp: TVApp, light: true, category: "Entertainment", system: true },
+  // Utility apps
+  fitness: { id: "fitness", name: "Fitness", Comp: FitnessApp, light: true, category: "Health & Fitness", system: true },
+  freeform: { id: "freeform", name: "Freeform", Comp: FreeformApp, category: "Productivity & Finance", system: true },
+  home: { id: "home", name: "Home", Comp: HomeApp, category: "Utilities", system: true },
+  passwords: { id: "passwords", name: "Passwords", Comp: PasswordsApp, category: "Utilities", system: true },
+  // More games
+  minesweeper: { id: "minesweeper", name: "Minesweeper", Comp: MinesweeperApp, category: "Entertainment", system: false, blurb: "Classic mine-finding" },
+  solitaire: { id: "solitaire", name: "Solitaire", Comp: SolitaireApp, category: "Entertainment", system: false, blurb: "Klondike solitaire" },
+  memory: { id: "memory", name: "Memory", Comp: MemoryApp, category: "Entertainment", system: false, blurb: "Match the pairs" },
+  tictactoe: { id: "tictactoe", name: "Tic-Tac-Toe", Comp: TicTacToeApp, category: "Entertainment", system: false, blurb: "Play vs AI" },
+  flappybird: { id: "flappybird", name: "Flappy Bird", Comp: FlappyBirdApp, light: true, category: "Entertainment", system: false, blurb: "Tap to flap" },
 };
 
 export const appName = (id: string) => APPS[id]?.name ?? id;

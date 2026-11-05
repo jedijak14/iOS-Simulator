@@ -1,6 +1,8 @@
-import { Camera, Cloud, Mail, MessageCircle, Music, Phone, Settings, Sun } from "lucide-react";
+import { Camera, Cloud, Mail, MessageCircle, Music, Phone, Settings, Sun, Heart, Video, Languages, Folder, BookOpen, MapPin, Search, Sparkles, Activity, Moon } from "lucide-react";
 import { DAYS_SHORT } from "./utils";
 import { useNow } from "./store";
+import { iconUrl } from "./iconUrls";
+import { useIconMode, iconModeFilter } from "./TintedIcons";
 
 const FONT = `-apple-system, "SF Pro Display", "Helvetica Neue", Inter, system-ui, sans-serif`;
 
@@ -299,12 +301,177 @@ function Art({ id }: { id: string }) {
           <circle cx="12" cy="52" r="3" fill="#ff3b30" />
         </svg>
       );
+    case "minesweeper":
+      return (
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+          <rect width="60" height="60" fill="#1c1c1e" />
+          {[0, 1, 2].map((r) => [0, 1, 2].map((c) => (
+            <rect key={`${r}${c}`} x={6 + c * 16} y={6 + r * 16} width="14" height="14" rx="2" fill={r === 1 && c === 1 ? "#ff3b30" : "#3a3a3c"} />
+          )))}
+          <circle cx="30" cy="30" r="5" fill="#ff3b30" />
+          <circle cx="27" cy="27" r="2" fill="#fff" opacity="0.6" />
+        </svg>
+      );
+    case "solitaire":
+      return (
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+          <Grad id="sol" a="#1a3a5c" b="#0d1f33" />
+          <rect width="60" height="60" fill="url(#sol)" />
+          <rect x="10" y="16" width="24" height="34" rx="3" fill="#fff" transform="rotate(-12 22 33)" />
+          <rect x="22" y="14" width="24" height="34" rx="3" fill="#fff" transform="rotate(8 34 31)" />
+          <text x="34" y="34" textAnchor="middle" fontSize="16" fill="#ff3b30" fontFamily={FONT} transform="rotate(8 34 31)">A</text>
+          <text x="28" y="46" textAnchor="middle" fontSize="10" fill="#ff3b30" fontFamily={FONT} transform="rotate(8 34 31)">♥</text>
+        </svg>
+      );
+    case "memory":
+      return (
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+          <Grad id="mem" a="#5e5ce6" b="#3634a3" />
+          <rect width="60" height="60" fill="url(#mem)" />
+          {[0, 1].map((r) => [0, 1, 2].map((c) => (
+            <rect key={`${r}${c}`} x={8 + c * 16} y={8 + r * 22} width="14" height="20" rx="2" fill="#fff" opacity="0.9" />
+          )))}
+        </svg>
+      );
+    case "tictactoe":
+      return (
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+          <rect width="60" height="60" fill="#1c1c1e" />
+          <line x1="22" y1="12" x2="22" y2="48" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="38" y1="12" x2="38" y2="48" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="12" y1="22" x2="48" y2="22" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+          <line x1="12" y1="38" x2="48" y2="38" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" />
+          <text x="17" y="20" textAnchor="middle" fontSize="12" fill="#0a84ff" fontFamily={FONT} fontWeight="700">X</text>
+          <text x="33" y="36" textAnchor="middle" fontSize="12" fill="#ff3b30" fontFamily={FONT} fontWeight="700">O</text>
+          <text x="17" y="52" textAnchor="middle" fontSize="12" fill="#ff3b30" fontFamily={FONT} fontWeight="700">O</text>
+        </svg>
+      );
+    case "flappybird":
+      return (
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+          <Grad id="fb" a="#4ec0ca" b="#2a8a94" />
+          <rect width="60" height="60" fill="url(#fb)" />
+          <rect x="0" y="48" width="60" height="12" fill="#ded895" />
+          <rect x="40" y="20" width="14" height="28" fill="#5c9c3e" />
+          <rect x="40" y="0" width="14" height="18" fill="#5c9c3e" />
+          <circle cx="18" cy="30" r="9" fill="#f7d51d" />
+          <circle cx="22" cy="27" r="3" fill="#fff" />
+          <circle cx="23" cy="27" r="1.5" fill="#000" />
+          <polygon points="27,30 33,28 33,32" fill="#ff9500" />
+        </svg>
+      );
+    case "contacts":
+      return (
+        <Gradient a="#f5f5f7" b="#d6d6db">
+          <div className="flex h-full w-full flex-col items-center justify-center" style={{ background: "linear-gradient(180deg,#f7f7f9,#c9c9cf)" }}>
+            <div className="flex h-[58%] w-[58%] items-center justify-center rounded-full" style={{ background: "linear-gradient(180deg,#8e8e93,#636366)" }}>
+              <svg viewBox="0 0 60 60" width="100%" height="100%"><circle cx="30" cy="22" r="9" fill="#fff" /><path d="M14 50 a16 14 0 0 1 32 0 z" fill="#fff" /></svg>
+            </div>
+          </div>
+        </Gradient>
+      );
+    case "facetime":
+      return (
+        <Gradient a="#5be36a" b="#0ba31c">
+          <Video size="56%" color="#fff" fill="#fff" strokeWidth={1.6} />
+        </Gradient>
+      );
+    case "health":
+      return (
+        <Gradient a="#ffffff" b="#ececf0">
+          <Heart size="50%" color="#fe2d55" fill="#fe2d55" strokeWidth={1.5} />
+        </Gradient>
+      );
+    case "translate":
+      return (
+        <Gradient a="#5ac8fa" b="#0a84ff">
+          <Languages size="58%" color="#fff" strokeWidth={2.2} />
+        </Gradient>
+      );
+    case "files":
+      return (
+        <Gradient a="#1c1c1e" b="#0a0a0c">
+          <Folder size="60%" color="#5ac8fa" fill="#5ac8fa" strokeWidth={1.5} />
+        </Gradient>
+      );
+    case "shortcuts":
+      return (
+        <svg viewBox="0 0 60 60" width="100%" height="100%">
+          <rect width="60" height="60" fill="#1c1c1e" />
+          <rect x="14" y="14" width="13" height="13" rx="3" fill="#5ac8fa" transform="rotate(-8 20.5 20.5)" />
+          <rect x="33" y="14" width="13" height="13" rx="3" fill="#34c759" transform="rotate(8 39.5 20.5)" />
+          <rect x="14" y="33" width="13" height="13" rx="3" fill="#ff9f0a" transform="rotate(8 20.5 39.5)" />
+          <rect x="33" y="33" width="13" height="13" rx="3" fill="#ff375f" transform="rotate(-8 39.5 39.5)" />
+        </svg>
+      );
+    case "journal":
+      return (
+        <Gradient a="#ffb74d" b="#f57c00">
+          <BookOpen size="56%" color="#fff" strokeWidth={1.8} />
+        </Gradient>
+      );
+    case "tips":
+      return (
+        <Gradient a="#fff6c2" b="#ffd60a">
+          <Sparkles size="56%" color="#a86b00" strokeWidth={2} />
+        </Gradient>
+      );
+    case "findmy":
+      return (
+        <Gradient a="#7ee2a0" b="#0aa64a">
+          <div className="relative flex h-full w-full items-center justify-center">
+            <MapPin size="48%" color="#fff" fill="#fff" strokeWidth={1.5} className="absolute" />
+            <div className="absolute h-[18%] w-[18%] rounded-full bg-[#0a84ff]" />
+          </div>
+        </Gradient>
+      );
+    case "magnifier":
+      return (
+        <Gradient a="#3a3a3c" b="#1c1c1e">
+          <Search size="62%" color="#ffd60a" strokeWidth={2.4} />
+        </Gradient>
+      );
+    case "podcasts":
+      return (
+        <Gradient a="#b66ef0" b="#7a3df0">
+          <Activity size="60%" color="#fff" strokeWidth={2.4} />
+        </Gradient>
+      );
+    case "news":
+      return (
+        <Gradient a="#ffffff" b="#e8e8ec">
+          <div className="flex h-full w-full items-center justify-center text-[28px] font-serif font-bold text-[#ff3b30]" style={{ fontFamily: "Times, serif" }}>
+            N
+          </div>
+        </Gradient>
+      );
+    case "books":
+      return (
+        <Gradient a="#ff9f40" b="#ff6a00">
+          <BookOpen size="58%" color="#fff" strokeWidth={1.8} />
+        </Gradient>
+      );
+    case "fitness":
+      return (
+        <Gradient a="#ff4d6d" b="#c9184a">
+          <Activity size="56%" color="#fff" strokeWidth={2.4} />
+        </Gradient>
+      );
+    case "meditation":
+      return (
+        <Gradient a="#8e9bff" b="#4254d6">
+          <Moon size="56%" color="#fff" strokeWidth={1.8} />
+        </Gradient>
+      );
     default:
       return <Gradient a="#c7c7cc" b="#8e8e93" />;
   }
 }
 
 export function AppIcon({ id, size = 60 }: { id: string; size?: number }) {
+  const url = iconUrl(id);
+  const mode = useIconMode();
+  const filter = iconModeFilter(mode);
   return (
     <div
       className="relative shrink-0 overflow-hidden"
@@ -315,7 +482,27 @@ export function AppIcon({ id, size = 60 }: { id: string; size?: number }) {
         boxShadow: "inset 0 0 0 0.5px rgba(0,0,0,0.12)",
       }}
     >
-      <Art id={id} />
+      {url ? (
+        <img
+          src={url}
+          alt={id}
+          width={size}
+          height={size}
+          loading="lazy"
+          draggable={false}
+          className="h-full w-full object-cover"
+          style={filter ? { filter } : undefined}
+          onError={(e) => {
+            // hide img and fall back to the SVG art
+            (e.currentTarget as HTMLImageElement).style.display = "none";
+            const sib = (e.currentTarget.nextElementSibling as HTMLElement | null);
+            if (sib) sib.style.display = "block";
+          }}
+        />
+      ) : null}
+      <div style={{ display: url ? "none" : "block", height: "100%", width: "100%", filter: filter || undefined }}>
+        <Art id={id} />
+      </div>
     </div>
   );
 }

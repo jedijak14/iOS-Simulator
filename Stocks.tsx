@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Newspaper } from "lucide-react";
 import { useOS } from "../os/store";
+import { patchData } from "../os/data";
 import { Page, Sheet, Segmented } from "../os/ui";
 
 interface Sym {
@@ -148,12 +149,29 @@ export default function StocksApp() {
         </div>
         <div className="mx-4 mt-6">
           <div className="mb-2 flex items-center gap-2 text-[20px] font-bold"><Newspaper size={20} /> Business News</div>
-          {["Chipmakers rally as AI demand stays strong", "Fed signals patience on rate decisions", "Retail sales beat expectations in latest report", "Tech earnings season: what to watch this week"].map((h, i) => (
-            <div key={h} className="py-3" style={{ borderTop: "0.5px solid rgba(255,255,255,.12)" }}>
-              <div className="text-[11px] font-semibold uppercase text-white/45">{["Reuters", "Bloomberg", "AP", "WSJ"][i]}</div>
-              <div className="text-[16px] leading-snug">{h}</div>
-            </div>
-          ))}
+          {["Chipmakers rally as AI demand stays strong", "Fed signals patience on rate decisions", "Retail sales beat expectations in latest report", "Tech earnings season: what to watch this week"].map((h, i) => {
+            const sources = ["Reuters", "Bloomberg", "AP", "WSJ"];
+            const wikiQuery = h.split(" ").slice(0, 4).join(" ");
+            return (
+              <button
+                key={h}
+                onClick={() => {
+                  useOS.getState().openApp("safari");
+                  setTimeout(() => {
+                    patchData((s) => ({
+                      tabs: s.tabs.map((t) => (t.id === s.activeTab ? { ...t, url: `search:${wikiQuery}`, title: "Wikipedia Search" } : t)),
+                    }));
+                  }, 80);
+                }}
+                className="block w-full py-3 text-left"
+                style={{ borderTop: "0.5px solid rgba(255,255,255,.12)" }}
+              >
+                <div className="text-[11px] font-semibold uppercase text-white/45">{sources[i]}</div>
+                <div className="text-[16px] leading-snug text-white/95">{h}</div>
+                <div className="mt-0.5 text-[12px] text-white/40">Tap to read more →</div>
+              </button>
+            );
+          })}
         </div>
       </Page>
       <Sheet open={!!sel} onClose={() => setSel(null)} bg="bg-black" height="88%">

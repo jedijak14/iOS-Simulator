@@ -68,7 +68,7 @@ const Window = memo(function Window({ id, mode, rect, cardX, cardDy, cardAnim, d
   let transform = "none";
   let opacity = 1;
   let radius = 0;
-  let transition = "transform .42s cubic-bezier(.2,.85,.25,1), opacity .12s linear, border-radius .42s cubic-bezier(.2,.85,.25,1), visibility 0s";
+  let transition = "transform .48s cubic-bezier(.2,.85,.25,1), opacity .14s linear, border-radius .48s cubic-bezier(.2,.85,.25,1), visibility 0s";
   let visibility: "visible" | "hidden" = "visible";
   let pe: "auto" | "none" = "auto";
 
@@ -79,13 +79,13 @@ const Window = memo(function Window({ id, mode, rect, cardX, cardDy, cardAnim, d
     opacity = 0;
     radius = (rect.w * 0.2237) / s0;
     visibility = "hidden";
-    transition = "transform .42s cubic-bezier(.2,.85,.25,1), opacity .16s linear .24s, border-radius .42s cubic-bezier(.2,.85,.25,1), visibility 0s linear .45s";
+    transition = "transform .48s cubic-bezier(.2,.85,.25,1), opacity .18s linear .26s, border-radius .48s cubic-bezier(.2,.85,.25,1), visibility 0s linear .5s";
     pe = "none";
   } else if (eff === "card") {
     transform = `translate(${cardX}px, ${cardDy - 20}px) scale(${CARD})`;
     radius = 44 / CARD;
     pe = "none";
-    transition = cardAnim ? "transform .38s cubic-bezier(.2,.85,.25,1), opacity .2s, border-radius .35s" : "border-radius .35s";
+    transition = cardAnim ? "transform .42s cubic-bezier(.2,.85,.25,1), opacity .2s, border-radius .38s" : "border-radius .38s";
   } else if (drag) {
     const p = clamp(drag.dy / 380, 0, 1);
     const sc = 1 - p * 0.5;

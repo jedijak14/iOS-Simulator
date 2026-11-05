@@ -239,7 +239,16 @@ export function BootScreen() {
     <div className="absolute inset-0 z-[200] flex flex-col items-center justify-center bg-black" onClick={() => power === "off" && useOS.getState().powerOn()}>
       {power === "booting" ? (
         <>
-          <svg viewBox="0 0 384 512" width="84" height="108" fill="#fff" className="fade-in">
+          <svg
+            viewBox="0 0 384 512"
+            width="84"
+            height="108"
+            fill="#fff"
+            style={{
+              animation: "introLogoIn 1.2s cubic-bezier(0.4, 0, 0.2, 1) both",
+              filter: "drop-shadow(0 0 24px rgba(255,255,255,0.18))",
+            }}
+          >
             <path d={APPLE} />
           </svg>
           <div className="mt-16 h-[4px] w-[180px] overflow-hidden rounded-full bg-white/25">
@@ -254,7 +263,7 @@ export function BootScreen() {
 }
 
 export function DndPill() {
-  const dnd = useOS((s) => s.dnd);
+  const focus = useOS((s) => s.focus);
   const [show, setShow] = useState(false);
   const first = useRef(true);
   useEffect(() => {
@@ -265,12 +274,19 @@ export function DndPill() {
     setShow(true);
     const t = setTimeout(() => setShow(false), 1800);
     return () => clearTimeout(t);
-  }, [dnd]);
+  }, [focus]);
   if (!show) return null;
+  const labels: Record<string, string> = {
+    off: "Focus Off",
+    dnd: "Do Not Disturb On",
+    personal: "Personal Focus On",
+    work: "Work Focus On",
+    sleep: "Sleep Focus On",
+  };
   return (
     <div className="pop-in pointer-events-none absolute inset-x-0 z-[105] flex justify-center" style={{ top: 70 }}>
       <div className="glass-dark flex items-center gap-2 rounded-full px-4 py-2 text-[14px] font-medium text-white">
-        <Moon size={16} fill="#fff" /> Do Not Disturb {dnd ? "On" : "Off"}
+        <Moon size={16} fill="#fff" /> {labels[focus] ?? "Focus"}
       </div>
     </div>
   );

@@ -7,6 +7,7 @@ import { APPS } from "./registry";
 import { AppIcon } from "./icons";
 import { DAYS, MONTHS, fmtTime, relTime, sameDay } from "./utils";
 import { wallpaperOf } from "./devices";
+import { WALLPAPERS } from "./devices";
 import { TRACKS, artGradient, musicNext, musicPrev, musicToggle } from "./music";
 import { sfx } from "./sound";
 import { ScrollView } from "./ui";
@@ -121,6 +122,7 @@ export function LockScreen() {
   const faceId = useOS((s) => s.faceId);
   const flash = useOS((s) => s.flashlight);
   const wallpaper = useOS((s) => s.lockWallpaper);
+  const set = useOS((s) => s.set);
   const use24 = useOS((s) => s.use24h);
   const music = useOS((s) => s.music);
   const battery = useOS((s) => s.battery);
@@ -134,10 +136,17 @@ export function LockScreen() {
   const [drag, setDrag] = useState(false);
   const [face, setFace] = useState<"idle" | "scan" | "ok">("idle");
   const [pad, setPad] = useState(false);
+  const [customize, setCustomize] = useState(false);
+  const [clockColor, setClockColor] = useState<string>(() => localStorage.getItem("ios-sim-lock-clock-color") || "#ffffff");
+  const [clockFont, setClockFont] = useState<"system" | "rounded" | "serif">(() => (localStorage.getItem("ios-sim-lock-clock-font") as "system" | "rounded" | "serif") || "system");
   const start = useRef({ y: 0, t: 0 });
   const pressing = useRef(false);
   const dragRef = useRef(false);
   const dyRef = useRef(0);
+  const longPressT = useRef<number>(0);
+
+  const saveClockColor = (c: string) => { setClockColor(c); localStorage.setItem("ios-sim-lock-clock-color", c); };
+  const saveClockFont = (f: "system" | "rounded" | "serif") => { setClockFont(f); localStorage.setItem("ios-sim-lock-clock-font", f); };
   const track = TRACKS[music.idx];
 
   useEffect(() => {
@@ -205,6 +214,14 @@ export function LockScreen() {
         if ((e.target as HTMLElement).closest("button")) return;
         start.current = { y: e.clientY, t: performance.now() };
         pressing.current = true;
+        // long-press to customize
+        window.clearTimeout(longPressT.current);
+        longPressT.current = window.setTimeout(() => {
+          if (!dragRef.current) {
+            sfx.pop();
+            setCustomize(true);
+          }
+        }, 600);
       }}
       onPointerMove={(e) => {
         if (!pressing.current) return;
@@ -212,6 +229,7 @@ export function LockScreen() {
         if (!dragRef.current && Math.abs(d) > 8) {
           dragRef.current = true;
           setDrag(true);
+          window.clearTimeout(longPressT.current);
           (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
         }
         if (dragRef.current) {
@@ -221,6 +239,7 @@ export function LockScreen() {
       }}
       onPointerUp={() => {
         pressing.current = false;
+        window.clearTimeout(longPressT.current);
         if (!dragRef.current) return;
         dragRef.current = false;
         setDrag(false);
@@ -232,6 +251,7 @@ export function LockScreen() {
       }}
       onPointerCancel={() => {
         pressing.current = false;
+        window.clearTimeout(longPressT.current);
         dragRef.current = false;
         dyRef.current = 0;
         setDrag(false);
@@ -248,10 +268,21 @@ export function LockScreen() {
 
       {/* date + time */}
       <div className="absolute inset-x-0 text-center" style={{ top: spec.safeTop + 22 }}>
-        <div className="text-[20px] font-semibold tracking-tight opacity-90">
+        <div className="text-[20px] font-semibold opacity-90" style={{ letterSpacing: "-0.018em" }}>
           {DAYS[now.getDay()]}, {MONTHS[now.getMonth()]} {now.getDate()}
         </div>
-        <div className="-mt-1 text-[90px] font-semibold leading-[100px] tracking-[-3px]" style={{ opacity: 0.92, fontVariantNumeric: "tabular-nums" }}>
+        <div
+          className="-mt-1 text-[88px] font-semibold leading-[100px] tabular-nums"
+          style={{
+            opacity: 0.95,
+            letterSpacing: "-0.045em",
+            fontVariantNumeric: "tabular-nums",
+            color: clockColor,
+            fontFamily: clockFont === "rounded" ? "ui-rounded, -apple-system, system-ui, sans-serif" : clockFont === "serif" ? "Georgia, serif" : undefined,
+            textShadow: clockColor !== "#ffffff" ? `0 0 30px ${clockColor}66` : undefined,
+          }}
+          data-clock
+        >
           {fmtTime(now, use24, false)}
         </div>
       </div>
@@ -317,6 +348,64 @@ export function LockScreen() {
         </div>
       )}
       {pad && <Passcode onSuccess={finish} onCancel={() => setPad(false)} />}
+
+      {/* Lock Screen Customization editor (long-press to open) */}
+      {customize && (
+        <div className="fade-in absolute inset-0 z-[60] flex flex-col items-center justify-end bg-black/60 backdrop-blur-2xl" onClick={() => setCustomize(false)}>
+          <div className="mb-4 text-center text-white/90" onClick={(e) => e.stopPropagation()}>
+            <div className="text-[14px] font-medium opacity-80">Long-press to customize</div>
+            <div className="text-[12px] opacity-50">Tap anywhere to dismiss</div>
+          </div>
+          <div className="w-full max-w-[340px] rounded-3xl bg-ios-material p-5 text-ios-label shadow-2xl backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="mb-3 text-[16px] font-semibold" style={{ letterSpacing: "-0.015em" }}>Clock Color</div>
+            <div className="mb-5 flex flex-wrap gap-2.5">
+              {["#ffffff", "#ff9500", "#ff453a", "#ff2d55", "#bf5af2", "#0a84ff", "#5ac8fa", "#30d158", "#8e8e93", "#ffd60a"].map((c) => (
+                <button
+                  key={c}
+                  onClick={() => { saveClockColor(c); sfx.toggleOn(); }}
+                  className="h-9 w-9 rounded-full transition active:scale-90"
+                  style={{ background: c, outline: c === clockColor ? "3px solid var(--ios-blue)" : "1px solid rgba(0,0,0,0.1)", outlineOffset: 2 }}
+                />
+              ))}
+            </div>
+            <div className="mb-3 text-[16px] font-semibold" style={{ letterSpacing: "-0.015em" }}>Font</div>
+            <div className="mb-5 flex gap-2">
+              {([
+                { id: "system", label: "System", font: undefined },
+                { id: "rounded", label: "Rounded", font: "ui-rounded, system-ui" },
+                { id: "serif", label: "Serif", font: "Georgia, serif" },
+              ] as const).map((f) => (
+                <button
+                  key={f.id}
+                  onClick={() => { saveClockFont(f.id); sfx.toggleOn(); }}
+                  className={`flex-1 rounded-xl py-3 text-[15px] font-semibold transition ${f.id === clockFont ? "bg-ios-blue text-white" : "bg-ios-fill text-ios-label"}`}
+                  style={{ fontFamily: f.font, background: f.id === clockFont ? "var(--ios-blue)" : "var(--ios-fill)" }}
+                >
+                  {f.label}
+                </button>
+              ))}
+            </div>
+            <div className="mb-3 text-[16px] font-semibold" style={{ letterSpacing: "-0.015em" }}>Wallpaper</div>
+            <div className="flex flex-wrap gap-2">
+              {WALLPAPERS.map((w) => (
+                <button
+                  key={w.id}
+                  onClick={() => { set({ lockWallpaper: w.id }); sfx.toggleOn(); }}
+                  className="h-14 w-9 overflow-hidden rounded-lg transition active:scale-90"
+                  style={{ background: w.css, outline: w.id === wallpaper ? "3px solid var(--ios-blue)" : "1px solid rgba(0,0,0,0.1)", outlineOffset: 1 }}
+                />
+              ))}
+            </div>
+            <button
+              onClick={() => setCustomize(false)}
+              className="mt-5 w-full rounded-xl bg-ios-blue py-3 text-[16px] font-semibold text-white"
+              style={{ background: "var(--ios-blue)" }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -365,10 +454,10 @@ export function Shade() {
       <div className="absolute inset-0" style={{ background: wp.css }} />
       <div className="absolute inset-0 bg-black/45 backdrop-blur-2xl" />
       <div className="absolute inset-x-0 text-center" style={{ top: spec.safeTop + 4 }}>
-        <div className="text-[18px] font-semibold opacity-90">
+        <div className="text-[18px] font-semibold opacity-90" style={{ letterSpacing: "-0.015em" }}>
           {DAYS[now.getDay()]}, {MONTHS[now.getMonth()]} {now.getDate()}
         </div>
-        <div className="text-[56px] font-semibold leading-[60px] tracking-[-2px]">{fmtTime(now, use24, false)}</div>
+        <div className="text-[56px] font-semibold leading-[60px] tabular-nums" style={{ letterSpacing: "-0.04em", fontVariantNumeric: "tabular-nums" }} data-clock>{fmtTime(now, use24, false)}</div>
       </div>
       <ScrollView className="absolute inset-x-0 px-3" style={{ top: spec.safeTop + 90, bottom: 60 }}>
         <div className="mb-2 flex items-center justify-between px-2">

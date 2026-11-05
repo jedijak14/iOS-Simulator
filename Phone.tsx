@@ -62,8 +62,8 @@ function CallScreen() {
           <Btn icon={call.muted ? MicOff : Mic} label="mute" on={call.muted} onClick={() => upd({ muted: !call.muted })} />
           <Btn icon={Grid3x3} label="keypad" onClick={() => upd({ keypad: true })} />
           <Btn icon={Volume2} label="speaker" on={call.speaker} onClick={() => upd({ speaker: !call.speaker })} />
-          <Btn icon={Plus} label="add call" onClick={() => useOS.getState().showToast("Add Call isn't available in the simulator")} />
-          <Btn icon={Video} label="FaceTime" onClick={() => useOS.getState().showToast("FaceTime isn't available in the simulator")} />
+          <Btn icon={Plus} label="add call" onClick={() => useOS.getState().showToast("Add Call not supported in simulator")} />
+          <Btn icon={Video} label="FaceTime" onClick={() => { const c = findContactByNumber(call.number); useOS.getState().endCall(); if (c) setTimeout(() => { useOS.getState().openApp("facetime"); sendAction("facetime", "to:" + c.id); }, 100); else useOS.getState().showToast("Contact not found"); }} />
           <Btn icon={Users} label="contacts" onClick={() => { useOS.getState().showToast("Returned to Contacts"); }} />
         </div>
       )}
@@ -91,7 +91,7 @@ function ContactSheet({ id, onClose }: { id: string | null; onClose: () => void 
               {[
                 { icon: MessageCircle, label: "message", run: () => { onClose(); useOS.getState().openApp("messages"); sendAction("messages", "to:" + cc.id); } },
                 { icon: PhoneIcon, label: "call", run: () => { onClose(); callNumber(cc.phone, contactName(cc)); } },
-                { icon: Video, label: "video", run: () => useOS.getState().showToast("FaceTime isn't available in the simulator") },
+                { icon: Video, label: "video", run: () => { onClose(); setTimeout(() => { useOS.getState().openApp("facetime"); sendAction("facetime", "to:" + cc.id); }, 60); } },
                 { icon: MailIcon, label: "mail", run: () => { onClose(); useOS.getState().openApp("mail"); sendAction("mail", "to:" + cc.email); } },
               ].map((b) => (
                 <button key={b.label} onClick={b.run} className="flex h-[62px] w-[74px] flex-col items-center justify-center gap-1 rounded-[12px] bg-ios-cell text-ios-blue active:opacity-60">

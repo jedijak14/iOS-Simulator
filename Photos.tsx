@@ -4,6 +4,7 @@ import { useOS } from "../os/store";
 import { useData, patchData } from "../os/data";
 import { NavBtn, Page, TabBar } from "../os/ui";
 import { fmtClock, photoUrl } from "../os/utils";
+import { share } from "../os/share";
 import { STOCK, videoUrls } from "./media";
 
 interface Item {
@@ -98,7 +99,7 @@ function Viewer({ items, index, onClose, setIndex }: { items: Item[]; index: num
         )}
       </div>
       <div className="glass-dark flex items-center justify-around px-4 pt-3 text-ios-blue" style={{ paddingBottom: "calc(var(--safe-bottom) + 8px)" }}>
-        <button onClick={() => useOS.getState().showToast("Sharing isn't available in the simulator")}><Share size={24} /></button>
+        <button onClick={() => share({ text: it.title, subject: it.title, image: it.src, sourceApp: "photos" })}><Share size={24} /></button>
         <button onClick={toggleFav}><Heart size={24} fill={fav ? "currentColor" : "none"} /></button>
         <button onClick={() => setInfo(!info)}><Info size={24} /></button>
         <button onClick={del}><Trash2 size={24} /></button>

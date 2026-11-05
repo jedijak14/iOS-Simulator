@@ -12,6 +12,12 @@ import { Keyboard } from "./Keyboard";
 import { Spotlight } from "./Spotlight";
 import { Siri } from "./Siri";
 import { AlertHost, Banner, BootScreen, DndPill, RingingOverlay, SheetHost, Toast, VolumeHud } from "./Overlays";
+import { ShareSheet } from "./share";
+import { WritingToolsOverlay } from "./WritingTools";
+import { ShakeToUndo } from "./ShakeToUndo";
+import { StandBy, AirDropOverlay } from "./StandBy";
+import { SplitView } from "./SplitView";
+import { ContactPoster, AlwaysOnDisplay } from "./ContactPoster";
 import { musicTick } from "./music";
 
 export function Screen() {
@@ -139,6 +145,7 @@ export function Screen() {
       />
 
       <AppLayer />
+      <SplitView />
 
       {spotlight && <Spotlight />}
       <Siri />
@@ -166,7 +173,20 @@ export function Screen() {
       <Toast />
       <AlertHost />
       <SheetHost />
+      <ShareSheet />
+      <WritingToolsOverlay />
+      <AirDropOverlay />
+      <ContactPoster />
       <RingingOverlay />
+
+      {/* Shake-to-Undo listener (renders nothing) */}
+      <ShakeToUndo />
+
+      {/* StandBy mode (covers everything when active) */}
+      <StandBy />
+
+      {/* Always-On Display (dim clock when locked) */}
+      <AlwaysOnDisplay />
 
       {/* brightness dimmer */}
       <div className="pointer-events-none absolute inset-0 z-[140] bg-black" style={{ opacity: (1 - brightness) * 0.75 }} />

@@ -24,12 +24,16 @@ import {
   Zap,
   Cast,
   BatteryLow,
+  Briefcase,
+  Home as HomeIcon,
+  Bed,
 } from "lucide-react";
 import { useOS } from "./store";
 import { useSpec } from "./device-context";
 import { TRACKS, artGradient, musicNext, musicPrev, musicToggle } from "./music";
 import { sendAction } from "./actions";
 import { useDark } from "./store";
+import { sfx } from "./sound";
 
 function Tile({ on, onClick, children, className = "", color = "#fff", fg = "#000" }: { on?: boolean; onClick?: () => void; children: React.ReactNode; className?: string; color?: string; fg?: string }) {
   return (
@@ -86,7 +90,7 @@ export function ControlCenter() {
   const start = useRef<number | null>(null);
   const [dy, setDy] = useState(0);
   const cell = (spec.w - 44 - 36) / 4;
-  const close = () => s.set({ cc: false });
+  const close = () => { sfx.sheetClose(); s.set({ cc: false }); };
   const go = (id: string, action?: string) => {
     s.set({ cc: false });
     setTimeout(() => {
@@ -190,16 +194,13 @@ export function ControlCenter() {
           </div>
 
           {/* focus */}
-          <Tile on={s.dnd} color="#5e5ce6" fg="#fff" className="col-span-2 !justify-start gap-2.5 px-4" onClick={() => s.set({ dnd: !s.dnd })}>
-            <Moon size={24} fill={s.dnd ? "#fff" : "none"} />
-            <span className="text-[15px] font-semibold">{s.dnd ? "Do Not Disturb" : "Focus"}</span>
-          </Tile>
+          <FocusTile />
 
           {/* quick tiles */}
-          <Tile on={s.flashlight} onClick={() => s.set({ flashlight: !s.flashlight })}>
+          <Tile on={s.flashlight} onClick={() => { s.set({ flashlight: !s.flashlight }); sfx.toggleOn(); }}>
             <Flashlight size={26} fill={s.flashlight ? "#000" : "none"} />
           </Tile>
-          <Tile onClick={() => go("clock", "timer")}>
+          <Tile onClick={() => { go("clock", "timer"); sfx.tick(); }}>
             <Timer size={26} />
           </Tile>
           <Tile onClick={() => go("calculator")}>
@@ -209,13 +210,13 @@ export function ControlCenter() {
             <Camera size={26} />
           </Tile>
 
-          <Tile on={dark} onClick={() => s.set({ appearance: dark ? "light" : "dark" })}>
+          <Tile on={dark} onClick={() => { s.set({ appearance: dark ? "light" : "dark" }); sfx.toggleOn(); }}>
             <SunMoon size={26} />
           </Tile>
-          <Tile on={s.lowPower} color="#ffd60a" onClick={() => s.set({ lowPower: !s.lowPower })}>
+          <Tile on={s.lowPower} color="#ffd60a" onClick={() => { s.set({ lowPower: !s.lowPower }); sfx.toggleOn(); }}>
             <BatteryLow size={26} />
           </Tile>
-          <Tile on={s.silent} color="#ff453a" fg="#fff" onClick={() => s.toggleSilent()}>
+          <Tile on={s.silent} color="#ff453a" fg="#fff" onClick={() => { s.toggleSilent(); sfx.toggleOn(); }}>
             {s.silent ? <BellOff size={26} /> : <Bell size={26} />}
           </Tile>
           <Tile onClick={() => go("notes", "new")}>
@@ -226,7 +227,7 @@ export function ControlCenter() {
             <Settings size={22} />
             <span className="text-[15px] font-semibold">Settings</span>
           </Tile>
-          <Tile on={s.charging} color="#30d158" className="col-span-2 !justify-start gap-2.5 px-4" onClick={() => s.set({ charging: !s.charging })}>
+          <Tile on={s.charging} color="#30d158" className="col-span-2 !justify-start gap-2.5 px-4" onClick={() => { const next = !s.charging; s.set({ charging: next }); if (next) sfx.charge(); else sfx.toggleOff(); }}>
             <Zap size={22} fill={s.charging ? "#000" : "none"} />
             <span className="text-[15px] font-semibold">{s.charging ? "Charging" : "Plug In"}</span>
           </Tile>
@@ -234,5 +235,62 @@ export function ControlCenter() {
         <div className="mt-4 text-center text-[12px] text-white/50">Tap anywhere or swipe up to close</div>
       </div>
     </div>
+  );
+}
+
+const FOCUS_MODES: { id: "off" | "dnd" | "personal" | "work" | "sleep"; label: string; icon: typeof Moon; color: string }[] = [
+  { id: "off", label: "Off", icon: Bell, color: "#8e8e93" },
+  { id: "dnd", label: "Do Not Disturb", icon: Moon, color: "#5e5ce6" },
+  { id: "personal", label: "Personal", icon: HomeIcon, color: "#ff9500" },
+  { id: "work", label: "Work", icon: Briefcase, color: "#0a84ff" },
+  { id: "sleep", label: "Sleep", icon: Bed, color: "#5856d6" },
+];
+
+function FocusTile() {
+  const focus = useOS((s) => s.focus);
+  const set = useOS((s) => s.set);
+  const [open, setOpen] = useState(false);
+  const cur = FOCUS_MODES.find((f) => f.id === focus) ?? FOCUS_MODES[0];
+  const on = focus !== "off";
+
+  const pick = (id: typeof focus) => {
+    set({ focus: id, dnd: id === "dnd" });
+    if (id === "sleep") set({ appearance: "dark" });
+    setOpen(false);
+  };
+
+  return (
+    <>
+      <div className="col-span-2 flex gap-2" data-cc>
+        <Tile on={on} color={cur.color} fg="#fff" className="flex-1 !justify-start gap-2.5 px-4" onClick={() => pick(on ? "off" : "dnd")}>
+          <cur.icon size={22} fill={on ? "#fff" : "none"} />
+          <span className="truncate text-[14px] font-semibold">{on ? cur.label : "Focus"}</span>
+        </Tile>
+        <Tile onClick={() => setOpen(true)} className="!w-12 !px-0">
+          <span className="text-[20px] font-light text-white/70 leading-none">⌄</span>
+        </Tile>
+      </div>
+      {open && (
+        <div className="absolute inset-0 z-50 flex flex-col justify-end p-4" onClick={() => setOpen(false)}>
+          <div className="absolute inset-0 bg-black/40" />
+          <div className="relative rounded-2xl bg-[#1c1c1e]/95 p-2 text-white backdrop-blur-xl" onClick={(e) => e.stopPropagation()}>
+            <div className="px-2 py-2 text-[13px] font-semibold uppercase tracking-wider text-white/50">Focus</div>
+            {FOCUS_MODES.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => pick(f.id)}
+                className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left active:bg-white/10"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-[7px]" style={{ background: f.color }}>
+                  <f.icon size={18} fill={f.id !== "off" ? "#fff" : "none"} />
+                </div>
+                <span className="flex-1 text-[16px]">{f.label}</span>
+                {focus === f.id && <span className="text-ios-blue">✓</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </>
   );
 }

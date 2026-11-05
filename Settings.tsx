@@ -2,10 +2,13 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import {
   Accessibility as AccIcon,
   BatteryFull,
+  Bed,
   Bell,
   Bluetooth,
+  Briefcase,
   Check,
   Hand,
+  Home,
   Hourglass,
   Image as ImageIcon,
   LayoutGrid,
@@ -30,7 +33,7 @@ import {
 import { useOS, useDark, DEFAULT_LAYOUT } from "../os/store";
 import { DEVICES, WALLPAPERS } from "../os/devices";
 import { APPS } from "../os/registry";
-import { BackBtn, Group, Page, Row, SearchField, Segmented, Slider, Spinner, Toggle, ScrollView } from "../os/ui";
+import { BackBtn, Group, Page, Row, SearchField, Segmented, Slider, Spinner, Toggle, ScrollView, useLongPress } from "../os/ui";
 import { sfx } from "../os/sound";
 import { fmtTime } from "../os/utils";
 import { useNow } from "../os/store";
@@ -365,13 +368,18 @@ export default function SettingsApp() {
         return (
           <Sub title="Notifications">
             <Group header="Notification Style" footer="Notifications from the simulator's apps appear as banners and in Notification Center.">
-              <Row title="Do Not Disturb" right={<Toggle on={s.dnd} onChange={(v) => s.set({ dnd: v })} />} />
-              <Row title="Show Previews" value="Always" />
+              <Row title="Do Not Disturb" right={<Toggle on={s.dnd || s.focus !== "off"} onChange={(v) => s.set({ dnd: v, focus: v ? "dnd" : "off" })} />} />
+              <Row title="Show Previews" value="Always" chevron />
+              <Row title="Scheduled Summary" value="Off" chevron />
             </Group>
             <Group header="Notification Style">
-              {["messages", "mail", "reminders", "calendar", "clock"].map((a) => (
-                <Row key={a} title={APPS[a].name} value="Banners, Sounds" chevron />
+              {["messages", "mail", "reminders", "calendar", "clock", "facetime", "health", "stocks", "wallet"].map((a) => (
+                <Row key={a} title={APPS[a]?.name ?? a} value="Banners, Sounds" chevron onClick={() => useOS.getState().showToast(`Notification settings for ${APPS[a]?.name} — coming soon`)} />
               ))}
+            </Group>
+            <Group header="Siri">
+              <Row title="Allow Siri in Notifications" right={<Toggle on onChange={() => undefined} />} />
+              <Row title="Notification Suggestions" right={<Toggle on onChange={() => undefined} />} />
             </Group>
           </Sub>
         );
@@ -396,8 +404,40 @@ export default function SettingsApp() {
       case "focus":
         return (
           <Sub title="Focus">
-            <Group footer="Silences calls, alerts and notifications that arrive while this is on.">
-              <Row icon={Moon} iconBg="#5856d6" title="Do Not Disturb" right={<Toggle on={s.dnd} onChange={(v) => s.set({ dnd: v })} />} />
+            <Group footer="Focus modes silence calls, alerts, and notifications that arrive while this is on. Each Focus can be customized with allowed apps and contacts.">
+              <Row
+                icon={Moon}
+                iconBg="#5856d6"
+                title="Do Not Disturb"
+                right={<Toggle on={s.focus === "dnd"} onChange={(v) => s.set({ dnd: v, focus: v ? "dnd" : "off" })} />}
+                onClick={() => useOS.getState().showToast("Do Not Disturb silences all notifications")}
+              />
+              <Row
+                icon={Home}
+                iconBg="#ff9500"
+                title="Personal"
+                right={<Toggle on={s.focus === "personal"} onChange={(v) => s.set({ focus: v ? "personal" : "off", dnd: false })} />}
+                onClick={() => useOS.getState().showToast("Personal Focus lets in family and friends")}
+              />
+              <Row
+                icon={Briefcase}
+                iconBg="#0a84ff"
+                title="Work"
+                right={<Toggle on={s.focus === "work"} onChange={(v) => s.set({ focus: v ? "work" : "off", dnd: false })} />}
+                onClick={() => useOS.getState().showToast("Work Focus lets in colleagues and work apps")}
+              />
+              <Row
+                icon={Bed}
+                iconBg="#5856d6"
+                title="Sleep"
+                right={<Toggle on={s.focus === "sleep"} onChange={(v) => { s.set({ focus: v ? "sleep" : "off", dnd: false }); if (v) s.set({ appearance: "dark" }); }} />}
+                onClick={() => useOS.getState().showToast("Sleep Focus dims the screen and silences notifications")}
+              />
+            </Group>
+            <Group footer="Focus can be triggered automatically based on time, location, or app usage.">
+              <Row title="Set a Schedule" value="Add Schedule" chevron onClick={() => useOS.getState().showToast("Schedule creation not available in simulator")} />
+              <Row title="Smart Activation" right={<Toggle on onChange={() => undefined} />} />
+              <Row title="Cross-Device Sharing" right={<Toggle on onChange={() => undefined} />} />
             </Group>
           </Sub>
         );
@@ -617,30 +657,36 @@ export default function SettingsApp() {
       case "wallpaper":
         return (
           <Sub title="Wallpaper">
-            <div className="grid grid-cols-3 gap-3 px-4 pb-6">
-              {WALLPAPERS.map((w) => (
-                <button
-                  key={w.id}
-                  onClick={() =>
-                    s.showSheet({
-                      title: w.name,
-                      actions: [
-                        { text: "Set Lock Screen", onPress: () => s.set({ lockWallpaper: w.id }) },
-                        { text: "Set Home Screen", onPress: () => s.set({ wallpaper: w.id }) },
-                        { text: "Set Both", onPress: () => s.set({ wallpaper: w.id, lockWallpaper: w.id }) },
-                        { text: "Cancel", style: "cancel" },
-                      ],
-                    })
-                  }
-                  className="flex flex-col items-center gap-1.5 active:opacity-70"
-                >
-                  <div className="relative aspect-[9/19] w-full overflow-hidden rounded-[14px] shadow" style={{ background: w.css, outline: s.wallpaper === w.id || s.lockWallpaper === w.id ? "2px solid var(--ios-blue)" : "none", outlineOffset: 2 }}>
-                    <div className="absolute inset-x-0 top-[14%] text-center text-[20px] font-semibold text-white/90">9:41</div>
-                  </div>
-                  <span className="text-[12px] text-ios-label2">{w.name}</span>
-                </button>
-              ))}
-            </div>
+            <Group header="Customize" footer="Pick a wallpaper for your Lock Screen and Home Screen. Choose separately or set both at once.">
+              <Row icon={ImageIcon} iconBg="#00c7be" title="Customize Lock Screen" chevron onClick={() => useOS.getState().showToast("Long-press the Lock Screen to customize in real iOS")} />
+              <Row icon={ImageIcon} iconBg="#34c759" title="Customize Home Screen" chevron onClick={() => useOS.getState().showToast("Long-press the Home Screen to enter edit mode")} />
+            </Group>
+            <Group header="Wallpapers">
+              <div className="grid grid-cols-3 gap-3 px-1 pb-3">
+                {WALLPAPERS.map((w) => (
+                  <button
+                    key={w.id}
+                    onClick={() =>
+                      s.showSheet({
+                        title: w.name,
+                        actions: [
+                          { text: "Set Lock Screen", onPress: () => s.set({ lockWallpaper: w.id }) },
+                          { text: "Set Home Screen", onPress: () => s.set({ wallpaper: w.id }) },
+                          { text: "Set Both", onPress: () => s.set({ wallpaper: w.id, lockWallpaper: w.id }) },
+                          { text: "Cancel", style: "cancel" },
+                        ],
+                      })
+                    }
+                    className="flex flex-col items-center gap-1.5 active:opacity-70"
+                  >
+                    <div className="relative aspect-[9/19] w-full overflow-hidden rounded-[14px] shadow" style={{ background: w.css, outline: s.wallpaper === w.id || s.lockWallpaper === w.id ? "2px solid var(--ios-blue)" : "none", outlineOffset: 2 }}>
+                      <div className="absolute inset-x-0 top-[14%] text-center text-[20px] font-semibold text-white/90">9:41</div>
+                    </div>
+                    <span className="text-[12px] text-ios-label2">{w.name}</span>
+                  </button>
+                ))}
+              </div>
+            </Group>
           </Sub>
         );
       case "faceid":
@@ -721,9 +767,24 @@ function About({ back, spec }: { back: ReactNode; spec: (typeof DEVICES)[number]
   const name = useOS((s) => s.deviceName);
   const set = useOS((s) => s.set);
   const gb = useOS((s) => s.installed.length);
+  const [showCredits, setShowCredits] = useState(false);
+
+  // Long-press the Apple logo / version text to reveal the credits overlay.
+  const applePress = useLongPress(() => {
+    sfx.success();
+    setShowCredits(true);
+  }, 600);
+
   return (
     <Page title="About" large={false} left={back}>
       <div className="pt-3">
+        {/* Apple logo + version — long-press for credits */}
+        <div className="mb-4 flex select-none flex-col items-center pt-2 pb-1" {...applePress.handlers}>
+          <svg viewBox="0 0 384 512" width="46" height="60" fill="currentColor" className="text-ios-label">
+            <path d={APPLE_LOGO_PATH} />
+          </svg>
+          <div className="mt-2 text-[13px] text-ios-label2">iOS 17.5.1</div>
+        </div>
         <Group>
           <div className="ios-row flex min-h-[44px] items-center justify-between px-4 text-[17px]">
             <span>Name</span>
@@ -745,6 +806,31 @@ function About({ back, spec }: { back: ReactNode; spec: (typeof DEVICES)[number]
           <Row title="Bluetooth" value="A4:83:E7:2B:19:C1" />
         </Group>
       </div>
+      {showCredits && <CreditsOverlay onClose={() => setShowCredits(false)} />}
     </Page>
+  );
+}
+
+const APPLE_LOGO_PATH =
+  "M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.8-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z";
+
+/** Apple-style About credits overlay — long-press the Apple logo in About to open. */
+function CreditsOverlay({ onClose }: { onClose: () => void }) {
+  return (
+    <div className="fade-in absolute inset-0 z-[120] flex flex-col items-center justify-center bg-black text-white" onClick={onClose}>
+      <div className="flex flex-1 items-center justify-center">
+        <svg viewBox="0 0 384 512" width="76" height="100" fill="#fff" className="drop-shadow-[0_0_24px_rgba(255,255,255,0.18)]">
+          <path d={APPLE_LOGO_PATH} />
+        </svg>
+      </div>
+      <div className="flex flex-col items-center gap-1 px-6 pb-16 text-center">
+        <div className="text-[28px] font-semibold" style={{ letterSpacing: "-0.021em" }}>
+          iOS Simulator
+        </div>
+        <div className="mt-1 text-[15px] text-white/70">Built with React, TypeScript, Tailwind, and WebAudio</div>
+        <div className="mt-6 text-[13px] text-white/45">© 2026</div>
+      </div>
+      <div className="pb-[calc(var(--safe-bottom)+16px)] text-[13px] text-white/40">Tap to close</div>
+    </div>
   );
 }

@@ -172,6 +172,8 @@ export function Keyboard({ rootRef, dark, spec }: { rootRef: React.RefObject<HTM
 
   useEffect(() => {
     useOS.setState({ kbOpen: !!target });
+    if (target) sfx.sheetOpen();
+    else if (target === null) sfx.sheetClose();
   }, [target]);
 
   const insert = (text: string) => {

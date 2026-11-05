@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, SendHorizontal, X } from "lucide-react";
+import { Keyboard, Mic, SendHorizontal, X } from "lucide-react";
 import { useOS } from "./store";
 import { useSpec } from "./device-context";
 import { useData, patchData, contactName, newId } from "./data";
@@ -134,10 +134,35 @@ async function handle(raw: string): Promise<string> {
     else if (what === "airplane mode") st.setAirplane(on);
     else if (what === "dark mode") st.set({ appearance: on ? "dark" : "light" });
     else if (what === "flashlight") st.set({ flashlight: on });
-    else if (what === "do not disturb") st.set({ dnd: on });
+    else if (what === "do not disturb") st.set({ dnd: on, focus: on ? "dnd" : "off" });
     else if (what === "low power mode") st.set({ lowPower: on });
     else if (what === "silent mode") st.set({ silent: on });
     return `Okay, ${what} is ${on ? "on" : "off"}.`;
+  }
+  // Focus modes
+  if ((m = q.match(/(turn on|enable|start) (personal|work|sleep) focus/))) {
+    const mode = m[2] as "personal" | "work" | "sleep";
+    st.set({ focus: mode, dnd: false });
+    return `${mode[0].toUpperCase() + mode.slice(1)} Focus is now on.`;
+  }
+  if (/turn off focus|disable focus|exit focus/.test(q)) {
+    st.set({ focus: "off", dnd: false });
+    return "Focus is now off.";
+  }
+  if (/open (\w+)/.test(q)) {
+    const m2 = q.match(/open (\w+)/);
+    if (m2) {
+      const target = m2[1].toLowerCase();
+      const map: Record<string, string> = {
+        facetime: "facetime", contacts: "contacts", health: "health", translate: "translate", files: "files", shortcuts: "shortcuts", journal: "journal", tips: "tips", findmy: "findmy", magnifier: "magnifier",
+        calculator: "calculator", calendar: "calendar", camera: "camera", clock: "clock", compass: "compass", mail: "mail", maps: "maps", messages: "messages", music: "music", notes: "notes", phone: "phone", photos: "photos", reminders: "reminders", safari: "safari", settings: "settings", stocks: "stocks", wallet: "wallet", weather: "weather",
+      };
+      const id = map[target];
+      if (id) {
+        st.openApp(id);
+        return `Opening ${target}.`;
+      }
+    }
   }
   if (/volume up|turn (it )?up/.test(q)) {
     st.volumeStep(0.25);
@@ -201,13 +226,18 @@ export function Siri() {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [listening, setListening] = useState(false);
+  const [mode, setMode] = useState<"voice" | "text">("text");
   const recRef = useRef<{ stop: () => void } | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open) {
       setLines([{ role: "siri", text: "What can I help you with?" }]);
       setText("");
+      setListening(false);
+      // The text input should be available immediately when Siri opens.
+      requestAnimationFrame(() => inputRef.current?.focus());
     } else {
       recRef.current?.stop();
       window.speechSynthesis?.cancel();
@@ -216,6 +246,13 @@ export function Siri() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [lines, busy]);
+
+  // Re-focus the text input whenever we switch to text mode while open.
+  useEffect(() => {
+    if (open && mode === "text") {
+      requestAnimationFrame(() => inputRef.current?.focus());
+    }
+  }, [mode, open]);
 
   const ask = async (q: string) => {
     if (!q.trim()) return;
@@ -270,6 +307,7 @@ export function Siri() {
   };
 
   if (!open) return null;
+  const textMode = mode === "text";
   return (
     <div className="fade-in absolute inset-0 z-[98]" onPointerDown={(e) => e.stopPropagation()}>
       <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" onClick={() => set({ siri: false })} />
@@ -297,14 +335,20 @@ export function Siri() {
           <div ref={endRef} />
         </div>
       </ScrollView>
-      {/* orb */}
-      <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ bottom: (kb ? spec.kbH : 0) + 78 }}>
+      {/* orb — dimmed while in Type-to-Siri text mode */}
+      <div className="pointer-events-none absolute inset-x-0 flex justify-center transition-opacity duration-300" style={{ bottom: (kb ? spec.kbH : 0) + 78, opacity: textMode ? 0.35 : 1 }}>
         <div className="relative h-[84px] w-[84px]">
           {[0, 1, 2].map((i) => (
             <div key={i} className="absolute inset-0 rounded-full mix-blend-screen blur-[6px]" style={{ background: ["radial-gradient(circle at 30% 30%,#5ac8fa,transparent 70%)", "radial-gradient(circle at 70% 40%,#af52de,transparent 70%)", "radial-gradient(circle at 50% 75%,#ff2d55,transparent 70%)"][i], animation: `siri ${listening || busy ? 2.2 + i * 0.5 : 6 + i}s linear infinite ${i % 2 ? "reverse" : ""}` }} />
           ))}
           <div className="absolute inset-[22px] rounded-full bg-white/90 blur-[3px]" />
         </div>
+      </div>
+      {/* mode pill — shows whether voice or text mode is active */}
+      <div className="pointer-events-none absolute inset-x-0 flex justify-center" style={{ bottom: (kb ? spec.kbH : 0) + 168 }}>
+        <span className="rounded-full bg-white/15 px-3 py-1 text-[11px] font-medium uppercase tracking-wide text-white/70">
+          {textMode ? "Type to Siri" : "Voice Mode"}
+        </span>
       </div>
       <form
         className="absolute inset-x-4 flex items-center gap-2"
@@ -315,15 +359,32 @@ export function Siri() {
         }}
       >
         <input
+          ref={inputRef}
           value={text}
           onChange={(e) => setText(e.target.value)}
-          placeholder="Ask Siri…"
+          placeholder={textMode ? "Type to Siri…" : "Ask Siri…"}
           enterKeyHint="send"
           data-keep-focus
           className="h-11 flex-1 rounded-full bg-white/20 px-4 text-[17px] text-white outline-none placeholder:text-white/50"
         />
-        <button type="button" onClick={mic} className="flex h-11 w-11 items-center justify-center rounded-full text-white" style={{ background: listening ? "#ff3b30" : "rgba(255,255,255,0.2)" }}>
-          <Mic size={20} />
+        <button
+          type="button"
+          onClick={() => {
+            // Toggle between voice and text mode.
+            if (textMode) {
+              setMode("voice");
+              // Kick off the mic immediately when switching to voice mode.
+              setTimeout(mic, 0);
+            } else {
+              recRef.current?.stop();
+              setMode("text");
+            }
+          }}
+          className="flex h-11 w-11 items-center justify-center rounded-full text-white"
+          style={{ background: textMode ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.2)" }}
+          title={textMode ? "Switch to voice" : "Switch to typing"}
+        >
+          {textMode ? <Mic size={20} /> : <Keyboard size={20} />}
         </button>
         <button type="submit" className="flex h-11 w-11 items-center justify-center rounded-full bg-ios-blue text-white">
           <SendHorizontal size={18} />
