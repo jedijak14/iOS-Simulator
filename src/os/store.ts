@@ -157,6 +157,8 @@ export interface OSState {
   splitView: { left: string; right: string } | null;
   airdrop: { name: string; size: string; type: string; url?: string; progress: number; phase: "incoming" | "receiving" | "done" } | null;
   notifications: Notif[];
+  /** Apps whose notifications have been disabled in Settings. */
+  mutedApps: string[];
   flashlight: boolean;
   micActive: boolean;
   camActive: boolean;
@@ -277,6 +279,7 @@ export const useOS = create<OSState>()(
       splitView: null,
       airdrop: null,
       notifications: [],
+      mutedApps: [],
       flashlight: false,
       micActive: false,
       camActive: false,
@@ -455,8 +458,8 @@ export const useOS = create<OSState>()(
 
       notify: (n) => {
         const s = get();
+        if (s.power !== "on" || s.mutedApps.includes(n.app)) return;
         const notif: Notif = { ...n, id: uid(), at: Date.now() };
-        if (s.power !== "on") return;
         if (!s.locked && s.foreground === n.app && s.screenOn) return;
         set({ notifications: [notif, ...s.notifications].slice(0, 40) });
         if (s.dnd) return;
@@ -645,6 +648,7 @@ export const useOS = create<OSState>()(
         airplane: s.airplane,
         dnd: s.dnd,
         focus: s.focus,
+        mutedApps: s.mutedApps,
         lowPower: s.lowPower,
         orientationLock: s.orientationLock,
         wallpaper: s.wallpaper,

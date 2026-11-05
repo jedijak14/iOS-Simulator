@@ -1107,8 +1107,11 @@ export function TVApp() {
   const [tab, setTab] = useState<"watch" | "originals" | "search">("watch");
   const [q, setQ] = useState("");
   const [detail, setDetail] = useState<TVShow | null>(null);
+  const [channel, setChannel] = useState<string | null>(null);
 
   const featured = TV_SHOWS[0];
+  const channelOffset = channel ? Math.max(0, CHANNELS_TV.indexOf(channel)) : 0;
+  const channelShows = [...TV_SHOWS.slice(channelOffset), ...TV_SHOWS.slice(0, channelOffset)].slice(0, 6);
   const searchResults = q
     ? TV_SHOWS.filter((s) => (s.title + s.subtitle + s.description).toLowerCase().includes(q.toLowerCase()))
     : [];
@@ -1179,7 +1182,7 @@ export function TVApp() {
                 {CHANNELS_TV.map((c, i) => (
                   <button
                     key={c}
-                    onClick={() => useOS.getState().showToast(`${c} — coming soon`)}
+                    onClick={() => { sfx.pop(); setChannel(c); }}
                     className="flex h-[80px] w-[160px] shrink-0 items-center justify-center rounded-[12px] text-[16px] font-bold text-white"
                     style={{ background: `linear-gradient(135deg, hsl(${i * 45} 65% 45%), hsl(${i * 45 + 30} 55% 30%))` }}
                   >
@@ -1261,6 +1264,24 @@ export function TVApp() {
         value={tab}
         onChange={setTab}
       />
+
+      {channel && (
+        <div className="force-dark absolute inset-0 z-20 bg-black text-white">
+          <Page title={channel} bg="bg-black" large={false} left={<NavBtn onClick={() => setChannel(null)}><ChevronLeft size={22} /> Watch Now</NavBtn>}>
+            <div className="px-4 pb-3 text-[13px] text-white/55">Featured films and series from {channel}</div>
+            <div className="grid grid-cols-2 gap-3 px-4">
+              {channelShows.map((show) => (
+                <button key={show.id} onClick={() => openDetail(show)} className="text-left active:opacity-70">
+                  <TVThumb show={show} className="aspect-video w-full rounded-[10px]">
+                    <div className="absolute inset-x-2 bottom-2 truncate text-[13px] font-semibold text-white">{show.title}</div>
+                  </TVThumb>
+                  <div className="mt-1 truncate text-[12px] text-white/55">{show.subtitle}</div>
+                </button>
+              ))}
+            </div>
+          </Page>
+        </div>
+      )}
 
       {detail && <ShowDetail show={detail} onClose={() => setDetail(null)} />}
     </div>

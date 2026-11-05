@@ -7,7 +7,7 @@ import { relTime } from "../os/utils";
 import { useAppAction } from "../os/actions";
 import { sfx } from "../os/sound";
 
-type Box = "inbox" | "sent" | "drafts" | "trash" | "flagged" | "unread";
+type Box = "inbox" | "sent" | "drafts" | "trash" | "archive" | "flagged" | "unread";
 
 export default function MailApp() {
   const mails = useData((s) => s.mails);
@@ -91,7 +91,7 @@ export default function MailApp() {
             ))}
           </Group>
           <Group header="iCloud">
-            <Row icon={Archive} iconBg="#007aff" title="Archive" chevron />
+            <Row icon={Archive} iconBg="#007aff" title="Archive" value={mails.filter((m) => m.box === "archive").length || undefined} chevron onClick={() => setBox("archive")} />
           </Group>
         </Page>
       </div>
@@ -153,7 +153,7 @@ export default function MailApp() {
               <div className="glass relative z-20 flex items-center justify-between px-6 pt-2.5 text-ios-blue" style={{ paddingBottom: "calc(var(--safe-bottom) + 6px)", borderTop: "0.5px solid var(--ios-sep)" }}>
                 <button onClick={() => { setOpenId(null); newMail(cur.email); setSubject("Re: " + cur.subject.replace(/^Re: /, "")); setBody(`\n\nOn ${new Date(cur.at).toLocaleDateString()}, ${cur.from} wrote:\n> ${cur.body.split("\n").join("\n> ")}`); }}><Edit3 size={22} /></button>
                 <button onClick={() => { upd(cur.id, { box: "trash" }); setOpenId(null); }}><Trash2 size={22} /></button>
-                <button onClick={() => useOS.getState().showToast("Archived")}><Archive size={22} /></button>
+                <button onClick={() => { upd(cur.id, { box: "archive" }); setOpenId(null); useOS.getState().showToast("Archived"); }}><Archive size={22} /></button>
                 <button onClick={() => newMail()}><SquarePen size={22} /></button>
               </div>
             }

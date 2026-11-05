@@ -31,7 +31,11 @@ export function StandBy() {
       onClick={() => set({ standby: false })}
     >
       {/* close button */}
-      <button className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white/70 backdrop-blur hover:bg-white/20">
+      <button
+        aria-label="Exit StandBy"
+        onClick={(e) => { e.stopPropagation(); set({ standby: false }); }}
+        className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white/70 backdrop-blur hover:bg-white/20"
+      >
         <X size={18} />
       </button>
 

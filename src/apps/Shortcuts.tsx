@@ -91,6 +91,45 @@ const BUILTIN: Shortcut[] = [
   },
 ];
 
+const GALLERY: Shortcut[] = [
+  {
+    id: "gallery-commute",
+    name: "Commute Assistant",
+    icon: Clock,
+    color: "#0a84ff",
+    description: "Start your commute with directions and music",
+    steps: [
+      { kind: "action", label: "Get Current Weather", detail: "For Current Location" },
+      { kind: "action", label: "Play Playlist", detail: "Commute Mix" },
+      { kind: "output", label: "Show Result", detail: "Commute started — drive safely" },
+    ],
+  },
+  {
+    id: "gallery-focus",
+    name: "Focus Time",
+    icon: Moon,
+    color: "#5e5ce6",
+    description: "Silence distractions and lower the brightness",
+    steps: [
+      { kind: "set", label: "Turn On Do Not Disturb", detail: "Do Not Disturb" },
+      { kind: "set", label: "Set Brightness", detail: "35%" },
+      { kind: "output", label: "Show Result", detail: "Focus Time is on" },
+    ],
+  },
+  {
+    id: "gallery-bedtime",
+    name: "Bedtime",
+    icon: Star,
+    color: "#ff9500",
+    description: "Prepare your iPhone for sleep",
+    steps: [
+      { kind: "set", label: "Set Appearance", detail: "Dark Mode" },
+      { kind: "set", label: "Set Volume", detail: "20%" },
+      { kind: "action", label: "Play Playlist", detail: "Sleep Sounds" },
+    ],
+  },
+];
+
 function runShortcut(s: Shortcut) {
   sfx.pop();
   const os = useOS.getState();
@@ -134,6 +173,8 @@ export default function ShortcutsApp() {
   const [q, setQ] = useState("");
   const [sel, setSel] = useState<string | null>(null);
   const [editing, setEditing] = useState(false);
+  const [gallery, setGallery] = useState(false);
+  const [automations, setAutomations] = useState<string[]>([]);
   const [custom, setCustom] = useState<Shortcut[]>(() => {
     try {
       const raw = localStorage.getItem("ios-sim-shortcuts");
@@ -156,9 +197,43 @@ export default function ShortcutsApp() {
     }
   };
 
+  const createShortcut = () => {
+    const shortcut: Shortcut = {
+      id: `custom-${Date.now()}`,
+      name: "New Shortcut",
+      icon: Zap,
+      color: "#0a84ff",
+      description: "A custom shortcut",
+      steps: [{ kind: "output", label: "Show Result", detail: "Shortcut complete" }],
+    };
+    saveCustom([...custom, shortcut]);
+    setSel(shortcut.id);
+    setEditing(true);
+  };
+
+  const addFromGallery = (template: Shortcut) => {
+    const shortcut = { ...template, id: `${template.id}-${Date.now()}`, steps: template.steps.map((step) => ({ ...step })) };
+    saveCustom([...custom, shortcut]);
+    setGallery(false);
+    setSel(shortcut.id);
+    useOS.getState().showToast(`${template.name} added`);
+  };
+
+  const updateSteps = (steps: ShortcutStep[]) => {
+    if (!cur) return;
+    if (cur.builtin) {
+      const copy: Shortcut = { ...cur, id: `${cur.id}-copy-${Date.now()}`, name: `${cur.name} Copy`, builtin: false, steps };
+      saveCustom([...custom, copy]);
+      setSel(copy.id);
+      useOS.getState().showToast("Created an editable copy");
+    } else {
+      saveCustom(custom.map((item) => item.id === cur.id ? { ...item, steps } : item));
+    }
+  };
+
   return (
     <div className="relative h-full overflow-hidden bg-ios-grouped">
-      <Page title="Shortcuts" right={<button className="text-ios-blue" onClick={() => useOS.getState().showToast("Use the editor to create shortcuts")}><Plus size={26} /></button>}>
+      <Page title="Shortcuts" right={<button aria-label="New Shortcut" className="text-ios-blue" onClick={createShortcut}><Plus size={26} /></button>}>
         <div className="px-4 pb-2">
           <Segmented
             options={[{ id: "shortcuts", label: "Shortcuts" }, { id: "automation", label: "Automation" }]}
@@ -205,21 +280,26 @@ export default function ShortcutsApp() {
             </Group>
 
             <Group header="Gallery">
-              <Row icon={Star} iconBg="#ff9500" title="Shortcut of the Day" subtitle="Commute Assistant" chevron onClick={() => useOS.getState().showToast("Added from Gallery")} />
+              <Row icon={Star} iconBg="#ff9500" title="Shortcut of the Day" subtitle="Commute Assistant" chevron onClick={() => addFromGallery(GALLERY[0])} />
               <Row icon={Clock} iconBg="#5e5ce6" title="Time-based Automations" subtitle="Run shortcuts at specific times" chevron onClick={() => setTab("automation")} />
-              <Row icon={Zap} iconBg="#34c759" title="Explore Gallery" subtitle="Hundreds of prebuilt shortcuts" chevron onClick={() => useOS.getState().showToast("Gallery coming soon")} />
+              <Row icon={Zap} iconBg="#34c759" title="Explore Gallery" subtitle="Prebuilt shortcuts for everyday tasks" chevron onClick={() => setGallery(true)} />
             </Group>
           </>
         ) : (
           <>
             <Group header="Personal Automation">
-              <Row icon={Clock} iconBg="#5e5ce6" title="Time of Day" subtitle="Run at 7:00 AM" chevron onClick={() => useOS.getState().showToast("Time automation added")} />
-              <Row icon={Sun} iconBg="#ff9500" title="Sunrise" subtitle="Run at sunrise" chevron onClick={() => useOS.getState().showToast("Sunrise automation added")} />
-              <Row icon={Moon} iconBg="#0a84ff" title="Sunset" subtitle="Run at sunset" chevron onClick={() => useOS.getState().showToast("Sunset automation added")} />
-              <Row icon={SettingsIcon} iconBg="#8e8e93" title="Battery Level" subtitle="Below 20%" chevron onClick={() => useOS.getState().showToast("Battery automation added")} />
+              {[
+                { id: "time", icon: Clock, bg: "#5e5ce6", title: "Time of Day", subtitle: "Run at 7:00 AM" },
+                { id: "sunrise", icon: Sun, bg: "#ff9500", title: "Sunrise", subtitle: "Run at sunrise" },
+                { id: "sunset", icon: Moon, bg: "#0a84ff", title: "Sunset", subtitle: "Run at sunset" },
+                { id: "battery", icon: SettingsIcon, bg: "#8e8e93", title: "Battery Level", subtitle: "Below 20%" },
+              ].map((automation) => {
+                const enabled = automations.includes(automation.id);
+                return <Row key={automation.id} icon={automation.icon} iconBg={automation.bg} title={automation.title} subtitle={automation.subtitle} value={enabled ? "On" : "Off"} chevron onClick={() => setAutomations((items) => enabled ? items.filter((id) => id !== automation.id) : [...items, automation.id])} />;
+              })}
             </Group>
             <Group footer="Automations run your shortcuts automatically based on time, location, or events.">
-              <Row icon={Plus} iconBg="#34c759" title={<span className="text-ios-blue">Create Personal Automation</span>} onClick={() => useOS.getState().showToast("Pick a trigger above")} />
+              <Row icon={Plus} iconBg="#34c759" title={<span className="text-ios-blue">Create Personal Automation</span>} onClick={() => { setAutomations((items) => [...new Set([...items, "time"])]); useOS.getState().showToast("Time of Day automation created"); }} />
             </Group>
           </>
         )}
@@ -258,23 +338,52 @@ export default function ShortcutsApp() {
                     <div className="text-[15px] font-medium">{step.label}</div>
                     {step.detail && <div className="truncate text-[13px] text-ios-label2">{step.detail}</div>}
                   </div>
-                  {editing && <button className="text-ios-label2"><X size={16} /></button>}
+                  {editing && <button aria-label={`Remove action ${i + 1}`} onClick={() => updateSteps(cur.steps.filter((_, index) => index !== i))} className="text-ios-label2"><X size={16} /></button>}
                 </div>
               ))}
               {editing && (
-                <div className="px-4 py-3 text-center text-[14px] text-ios-blue">+ Add Action</div>
+                <button
+                  onClick={() => updateSteps([...cur.steps, { kind: "output", label: "Show Result", detail: "New action complete" }])}
+                  className="w-full px-4 py-3 text-center text-[14px] text-ios-blue active:opacity-60"
+                >
+                  + Add Action
+                </button>
               )}
             </Group>
 
             <Group>
               <Row icon={Pencil} iconBg="#0a84ff" title={editing ? "Done Editing" : "Edit Shortcut"} onClick={() => setEditing((e) => !e)} />
-              <Row icon={SettingsIcon} iconBg="#8e8e93" title="Shortcut Details" subtitle={`${cur.steps.length} actions`} chevron />
+              <Row icon={SettingsIcon} iconBg="#8e8e93" title="Shortcut Details" subtitle={`${cur.steps.length} actions`} chevron onClick={() => useOS.getState().showAlert({ title: cur.name, message: `${cur.description}\n\n${cur.steps.map((step, index) => `${index + 1}. ${step.label}${step.detail ? ` — ${step.detail}` : ""}`).join("\n")}`, buttons: [{ text: "OK", style: "default" }] })} />
               {!cur.builtin && (
                 <Row title={<span className="text-ios-red">Delete Shortcut</span>} onClick={() => { saveCustom(custom.filter((s) => s.id !== cur.id)); setSel(null); }} />
               )}
             </Group>
           </Page>
         )}
+      </Sheet>
+
+      <Sheet open={gallery} onClose={() => setGallery(false)} full>
+        <Page title="Gallery" large={false} left={<NavBtn onClick={() => setGallery(false)}>Done</NavBtn>}>
+          <Group header="Starter Shortcuts" footer="Add a shortcut, then open it to run or customize its actions.">
+            {GALLERY.map((shortcut) => {
+              const Icon = shortcut.icon;
+              return (
+                <div key={shortcut.id} className="ios-row flex items-center gap-3 px-4 py-3">
+                  <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: shortcut.color }}>
+                    <Icon size={23} />
+                  </div>
+                  <button className="min-w-0 flex-1 text-left" onClick={() => addFromGallery(shortcut)}>
+                    <div className="truncate text-[16px] font-medium">{shortcut.name}</div>
+                    <div className="text-[13px] leading-[17px] text-ios-label2">{shortcut.description}</div>
+                  </button>
+                  <button aria-label={`Add ${shortcut.name}`} onClick={() => addFromGallery(shortcut)} className="rounded-full bg-ios-fill2 p-2 text-ios-blue active:opacity-60">
+                    <Plus size={18} />
+                  </button>
+                </div>
+              );
+            })}
+          </Group>
+        </Page>
       </Sheet>
     </div>
   );

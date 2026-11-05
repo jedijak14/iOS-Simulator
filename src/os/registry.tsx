@@ -31,7 +31,7 @@ import FindMyApp from "../apps/FindMy";
 import MagnifierApp from "../apps/Magnifier";
 import { Twenty48App, SnakeApp } from "../apps/Games";
 import { MinesweeperApp, SolitaireApp, MemoryApp, TicTacToeApp, FlappyBirdApp } from "../apps/MoreGames";
-import { SpotifyApp, YouTubeApp, InstagramApp, StubApp } from "../apps/ThirdParty";
+import { SpotifyApp, YouTubeApp, InstagramApp, SnapchatApp, DuckDuckGoApp } from "../apps/ThirdParty";
 import { PodcastsApp, NewsApp, BooksApp, TVApp } from "../apps/MediaApps";
 import { FitnessApp, FreeformApp, HomeApp, PasswordsApp } from "../apps/UtilityApps";
 import { sendAction } from "./actions";
@@ -121,8 +121,8 @@ export const APPS: Record<string, AppDef> = {
   spotify: { id: "spotify", name: "Spotify", Comp: SpotifyApp, category: "Entertainment", system: false, blurb: "Music and Podcasts" },
   youtube: { id: "youtube", name: "YouTube", Comp: YouTubeApp, category: "Entertainment", system: false, blurb: "Watch, listen, stream" },
   instagram: { id: "instagram", name: "Instagram", Comp: InstagramApp, category: "Social", system: false, blurb: "Connect with friends" },
-  snapchat: { id: "snapchat", name: "Snapchat", Comp: () => <StubApp name="Snapchat" color="#fffc00" />, category: "Social", system: false, blurb: "Share the moment" },
-  duckduckgo: { id: "duckduckgo", name: "DuckDuckGo", Comp: () => <StubApp name="DuckDuckGo" color="#de5833" />, category: "Utilities", system: false, blurb: "Privacy browser" },
+  snapchat: { id: "snapchat", name: "Snapchat", Comp: SnapchatApp, category: "Social", system: false, blurb: "Share the moment" },
+  duckduckgo: { id: "duckduckgo", name: "DuckDuckGo", Comp: DuckDuckGoApp, category: "Utilities", system: false, blurb: "Privacy browser" },
   // Media apps
   podcasts: { id: "podcasts", name: "Podcasts", Comp: PodcastsApp, category: "Entertainment", system: true },
   news: { id: "news", name: "News", Comp: NewsApp, category: "Information & Reading", system: true },

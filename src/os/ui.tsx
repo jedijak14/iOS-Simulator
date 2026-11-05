@@ -671,7 +671,7 @@ export function Sheet({
         }}
       >
         <div
-          className="absolute inset-x-0 top-0 z-30 flex h-6 cursor-grab justify-center pt-1.5"
+          className="absolute left-1/2 top-0 z-30 flex h-6 w-20 -translate-x-1/2 cursor-grab justify-center pt-1.5"
           onPointerDown={(e) => {
             drag.current = { y: e.clientY };
             (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);

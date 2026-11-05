@@ -318,7 +318,13 @@ function TimerTab() {
             <span className="-ml-1 w-8 text-[15px] font-semibold">sec</span>
           </div>
           <div className="mt-10 flex w-full justify-between px-8">
-            <button className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-ios-fill2 text-[17px] opacity-50">Cancel</button>
+            <button
+              disabled={total === 0}
+              onClick={() => { setH(0); setM(0); setS(0); }}
+              className="flex h-[84px] w-[84px] items-center justify-center rounded-full bg-ios-fill2 text-[17px] disabled:opacity-50"
+            >
+              Cancel
+            </button>
             <button
               disabled={total === 0}
               onClick={() => useOS.getState().startTimer(total)}

@@ -66,7 +66,7 @@ export interface Mail {
   at: number;
   read: boolean;
   flagged: boolean;
-  box: "inbox" | "sent" | "drafts" | "trash";
+  box: "inbox" | "sent" | "drafts" | "trash" | "archive";
 }
 export interface Photo {
   id: string;

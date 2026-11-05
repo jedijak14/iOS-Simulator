@@ -164,7 +164,7 @@ export default function FindMyApp() {
         )}
 
         <Group footer="Find My helps you locate your Apple devices, items with AirTags, and friends who share their location with you.">
-          <Row title="Me" subtitle="Location Sharing: On" value="" chevron />
+          <Row title="Me" subtitle="Location Sharing: On" value="" />
         </Group>
       </Page>
 

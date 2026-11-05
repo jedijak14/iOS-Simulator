@@ -209,6 +209,20 @@ export default function SettingsApp() {
   const [q, setQ] = useState("");
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
+  const [preferences, setPreferences] = useState({
+    siriNotices: true,
+    suggestions: true,
+    lockSound: true,
+    smartActivation: true,
+    crossDevice: true,
+    autoTime: true,
+    previews: true,
+    scheduledSummary: false,
+    backgroundRefresh: true,
+    voiceOver: false,
+    zoom: false,
+  });
+  const togglePreference = (key: keyof typeof preferences) => setPreferences((p) => ({ ...p, [key]: !p[key] }));
   const spec = DEVICES.find((d) => d.id === s.deviceId) ?? DEVICES[0];
 
   const push = (id: string) => setStack((st) => [...st, id]);
@@ -261,7 +275,10 @@ export default function SettingsApp() {
     }
   };
 
-  const titleOf = (id: string) => (id === "root" ? "Settings" : (Object.values(R).find((r) => r.id === id)?.title ?? INFO[id]?.[0] ?? id.charAt(0).toUpperCase() + id.slice(1)));
+  const titleOf = (id: string) => {
+    if (id.startsWith("notifications/")) return APPS[id.split("/")[1]]?.name ?? "Notifications";
+    return id === "root" ? "Settings" : (Object.values(R).find((r) => r.id === id)?.title ?? INFO[id]?.[0] ?? id.charAt(0).toUpperCase() + id.slice(1));
+  };
 
   const backFor = (id: string) => <BackBtn label={titleOf(stack[Math.max(0, stack.indexOf(id) - 1)])} onClick={pop} />;
 
@@ -309,6 +326,29 @@ export default function SettingsApp() {
             ))
           )}
         </Page>
+      );
+    }
+
+    if (id.startsWith("notifications/")) {
+      const appId = id.split("/")[1];
+      const enabled = !s.mutedApps.includes(appId);
+      return (
+        <Sub title={APPS[appId]?.name ?? "Notifications"}>
+          <Group footer={`Choose whether ${APPS[appId]?.name ?? "this app"} can send alerts to Notification Center, the Lock Screen, and the Dynamic Island.`}>
+            <Row
+              title="Allow Notifications"
+              right={<Toggle on={enabled} onChange={(value) => s.set({ mutedApps: value ? s.mutedApps.filter((a) => a !== appId) : [...new Set([...s.mutedApps, appId])] })} />}
+            />
+          </Group>
+          {enabled && (
+            <Group header="Alerts">
+              <Row title="Lock Screen" check />
+              <Row title="Notification Center" check />
+              <Row title="Banners" check />
+              <Row title="Sounds" check />
+            </Group>
+          )}
+        </Sub>
       );
     }
 
@@ -367,19 +407,20 @@ export default function SettingsApp() {
       case "notifications":
         return (
           <Sub title="Notifications">
-            <Group header="Notification Style" footer="Notifications from the simulator's apps appear as banners and in Notification Center.">
+            <Group header="General" footer="Notifications from the simulator's apps appear as banners and in Notification Center.">
               <Row title="Do Not Disturb" right={<Toggle on={s.dnd || s.focus !== "off"} onChange={(v) => s.set({ dnd: v, focus: v ? "dnd" : "off" })} />} />
-              <Row title="Show Previews" value="Always" chevron />
-              <Row title="Scheduled Summary" value="Off" chevron />
+              <Row title="Show Previews" value={preferences.previews ? "Always" : "Never"} chevron onClick={() => togglePreference("previews")} />
+              <Row title="Scheduled Summary" value={preferences.scheduledSummary ? "On" : "Off"} chevron onClick={() => togglePreference("scheduledSummary")} />
             </Group>
             <Group header="Notification Style">
-              {["messages", "mail", "reminders", "calendar", "clock", "facetime", "health", "stocks", "wallet"].map((a) => (
-                <Row key={a} title={APPS[a]?.name ?? a} value="Banners, Sounds" chevron onClick={() => useOS.getState().showToast(`Notification settings for ${APPS[a]?.name} — coming soon`)} />
-              ))}
+              {["messages", "mail", "reminders", "calendar", "clock", "facetime", "health", "stocks", "wallet"].map((a) => {
+                const enabled = !s.mutedApps.includes(a);
+                return <Row key={a} title={APPS[a]?.name ?? a} value={enabled ? "Banners, Sounds" : "Off"} chevron onClick={() => push(`notifications/${a}`)} />;
+              })}
             </Group>
             <Group header="Siri">
-              <Row title="Allow Siri in Notifications" right={<Toggle on onChange={() => undefined} />} />
-              <Row title="Notification Suggestions" right={<Toggle on onChange={() => undefined} />} />
+              <Row title="Allow Siri in Notifications" right={<Toggle on={preferences.siriNotices} onChange={() => togglePreference("siriNotices")} />} />
+              <Row title="Notification Suggestions" right={<Toggle on={preferences.suggestions} onChange={() => togglePreference("suggestions")} />} />
             </Group>
           </Sub>
         );
@@ -397,7 +438,7 @@ export default function SettingsApp() {
             </Group>
             <Group>
               <Row title="Keyboard Clicks" right={<Toggle on={s.keyClicks} onChange={(v) => s.set({ keyClicks: v })} />} />
-              <Row title="Lock Sound" right={<Toggle on onChange={() => undefined} />} />
+              <Row title="Lock Sound" right={<Toggle on={preferences.lockSound} onChange={() => togglePreference("lockSound")} />} />
             </Group>
           </Sub>
         );
@@ -436,8 +477,8 @@ export default function SettingsApp() {
             </Group>
             <Group footer="Focus can be triggered automatically based on time, location, or app usage.">
               <Row title="Set a Schedule" value="Add Schedule" chevron onClick={() => useOS.getState().showToast("Schedule creation not available in simulator")} />
-              <Row title="Smart Activation" right={<Toggle on onChange={() => undefined} />} />
-              <Row title="Cross-Device Sharing" right={<Toggle on onChange={() => undefined} />} />
+              <Row title="Smart Activation" right={<Toggle on={preferences.smartActivation} onChange={() => togglePreference("smartActivation")} />} />
+              <Row title="Cross-Device Sharing" right={<Toggle on={preferences.crossDevice} onChange={() => togglePreference("crossDevice")} />} />
             </Group>
           </Sub>
         );
@@ -450,7 +491,7 @@ export default function SettingsApp() {
             </Group>
             <Group>
               <Row title="iPhone Storage" chevron onClick={() => push("storage")} />
-              <Row title="Background App Refresh" chevron />
+              <Row title="Background App Refresh" value={preferences.backgroundRefresh ? "On" : "Off"} chevron onClick={() => togglePreference("backgroundRefresh")} />
             </Group>
             <Group>
               <Row title="Date & Time" chevron onClick={() => push("datetime")} />
@@ -557,7 +598,7 @@ export default function SettingsApp() {
           <Sub title="Date & Time">
             <Group footer="Set Automatically is on. The simulator uses your computer's clock.">
               <Row title="24-Hour Time" right={<Toggle on={s.use24h} onChange={(v) => s.set({ use24h: v })} />} />
-              <Row title="Set Automatically" right={<Toggle on onChange={() => undefined} />} />
+              <Row title="Set Automatically" right={<Toggle on={preferences.autoTime} onChange={() => togglePreference("autoTime")} />} />
             </Group>
             <Group>
               <Row title="Current Time" value={fmtTime(now, s.use24h)} />
@@ -649,8 +690,8 @@ export default function SettingsApp() {
             <Group header="Vision">
               <Row title="Bold Text" right={<Toggle on={s.boldText} onChange={(v) => s.set({ boldText: v })} />} />
               <Row title="Reduce Motion" right={<Toggle on={s.reduceMotion} onChange={(v) => s.set({ reduceMotion: v })} />} />
-              <Row title="VoiceOver" value="Off" chevron />
-              <Row title="Zoom" value="Off" chevron />
+              <Row title="VoiceOver" value={preferences.voiceOver ? "On" : "Off"} chevron onClick={() => togglePreference("voiceOver")} />
+              <Row title="Zoom" value={preferences.zoom ? "On" : "Off"} chevron onClick={() => togglePreference("zoom")} />
             </Group>
           </Sub>
         );

@@ -133,7 +133,7 @@ export default function AppStoreApp() {
               {games.map(row)}
               <div className="mb-1 mt-6 text-[22px] font-bold">Made by Apple</div>
               {all.filter((id) => APPS[id].system && APPS[id].category === "Entertainment").map(row)}
-              <div className="mt-4 text-[13px] text-ios-label2">More games coming soon.</div>
+              <div className="mt-4 text-[13px] text-ios-label2">More games are available in the full App Store.</div>
             </div>
           </Page>
         )}
