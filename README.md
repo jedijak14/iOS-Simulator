@@ -37,12 +37,12 @@ An interactive iPhone simulator that runs in the browser. Built with React 19, T
 
 ### Real iOS app icons (from iosicongallery.com)
 
-- All 35+ Apple system apps now use their **actual iOS app icons** loaded from `cdn.jim-nielsen.com` (the iOS Icon Gallery CDN).
+- Every registered simulator app now uses artwork from **iOS Icon Gallery**, loaded from `cdn.jim-nielsen.com` — including Apple system apps, third-party apps, and all built-in games.
 - Phone, Messages, Mail, Safari, Music, Clock, Maps, Camera, Reminders, Notes, Stocks, Wallet, Photos, Weather, Calendar, Contacts, FaceTime, Health, Translate, Files, Shortcuts, Journal, Tips, Find My, Magnifier, Podcasts, News, Books, Fitness, TV, Freeform, Home, iTunes, Passwords, GarageBand, iMovie, Keynote, Numbers, Pages, TestFlight, App Store Connect, Apple Store.
 - Real third-party app icons too: **Spotify, YouTube, YouTube Music, Instagram, Snapchat, DuckDuckGo**.
-- The `AppIcon` component gracefully falls back to the original SVG art if the real icon fails to load.
-- All icons are preloaded on app start for instant rendering.
-- Settings, Calculator, Compass, Voice Memos, and App Store aren't on iosicongallery — these keep the polished SVG icons.
+- For the few built-in Apple utilities not listed separately in the gallery, the closest available Apple/gallery artwork is used.
+- The `AppIcon` component gracefully falls back to the original SVG art only if gallery artwork fails to load.
+- All gallery icons are preloaded on app start for instant rendering.
 
 ### Real iOS system sounds (16 sounds)
 
