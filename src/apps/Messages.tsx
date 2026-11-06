@@ -1,31 +1,44 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, ChevronLeft, Plus, SquarePen, Camera, Settings2 } from "lucide-react";
 import { useOS } from "../os/store";
-import { useData, patchData, newId, contactName, type Thread, type Msg } from "../os/data";
+import { useData, patchData, newId, contactName, type Thread, type Msg, type Contact } from "../os/data";
 import { Avatar, Group, NavBtn, Page, SearchField, SwipeRow, ScrollView } from "../os/ui";
 import { sfx } from "../os/sound";
 import { useAppAction } from "../os/actions";
 import { relTime } from "../os/utils";
 
-const REPLIES: [RegExp, string[]][] = [
-  [/\b(hi|hello|hey|yo)\b/i, ["Hey! 👋", "Hi there!", "Hello! How's it going?"]],
-  [/how are you|how's it going|what's up|sup/i, ["Doing great, thanks! You?", "All good here 😊", "Can't complain! You?"]],
-  [/lunch|dinner|eat|food|pizza|coffee|ramen/i, ["Yes please, I'm starving 😋", "Sounds good! What time?", "Ooh, I'm in 🍕"]],
-  [/thank|thx/i, ["Anytime!", "You got it 🙌", "No problem!"]],
-  [/love|miss you/i, ["❤️", "Love you too!", "Aw 🥰"]],
-  [/\b(ok|okay|sure|yes|yep|yeah)\b/i, ["Perfect 👍", "Great!", "Awesome, see you then"]],
-  [/\b(when|what time)\b/i, ["How about 7?", "Around 6:30 works for me", "Whenever you're free!"]],
-  [/\?/, ["Hmm, good question. Let me think 🤔", "Not sure yet, will let you know", "Probably! I'll check and get back to you"]],
-  [/lol|haha|😂/i, ["😂😂", "Haha right?!", "I can't 😭"]],
+type AIConfig = { enabled: boolean; url: string; model: string; key: string };
+const DEFAULT_PERSONALITIES: Record<string, string> = {
+  c1: "Warm, caring and supportive. Checks in on family, speaks affectionately, and occasionally uses a heart emoji.",
+  c2: "Upbeat, adventurous and reliable. Loves hiking and making plans; replies casually and with enthusiasm.",
+  c3: "Witty, creative and sociable. Enjoys trying new restaurants, lighthearted jokes and thoughtful questions.",
+  c4: "Thoughtful, concise and detail-oriented. A friendly designer who likes clear plans and practical feedback.",
+  c5: "Curious, optimistic and thoughtful. Enjoys learning new things and encourages friends.",
+  c6: "Easygoing, playful and outgoing. Loves food, weekend adventures and friendly banter.",
+  c7: "Professional, kind and clear. Offers practical scheduling help without giving medical advice.",
+  c8: "Friendly and enthusiastic about pizza. Helps with food-related questions in a welcoming tone.",
+};
+const GENERIC_PERSONALITIES = [
+  "Friendly, cheerful and curious. Likes getting to know people and asks thoughtful follow-up questions.",
+  "Calm, considerate and supportive. Listens carefully and replies with warmth.",
+  "Playful, witty and sociable. Keeps replies light, natural and encouraging.",
+  "Practical, thoughtful and dependable. Prefers clear and concise replies.",
 ];
-const FALLBACK = ["Sounds good!", "Haha nice", "Got it 👍", "Talk soon!", "Okay!", "For sure 🙌", "Interesting…"];
-
-function pick<T>(a: T[]) {
-  return a[Math.floor(Math.random() * a.length)];
+function personalityOf(c: Contact): string {
+  const hash = [...c.id].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 0);
+  return c.personality?.trim() || DEFAULT_PERSONALITIES[c.id] || GENERIC_PERSONALITIES[hash % GENERIC_PERSONALITIES.length];
 }
-function reply(text: string) {
-  for (const [re, opts] of REPLIES) if (re.test(text)) return pick(opts);
-  return pick(FALLBACK);
+// Offline replies are scripted and clearly identified as such, not represented as AI.
+function scriptedReply(text: string, contact: Contact): string {
+  const variants = [
+    [/\b(hi|hello|hey|yo)\b/i, ["Hey! How's your day going?", "Hi there! It's good to hear from you.", "Hey you! What's new?", "Hello! How can I help?"]],
+    [/thank|thx/i, ["Of course! Anytime 😊", "You're very welcome.", "Anytime, friend!", "Happy to help."]],
+    [/\?/, ["Good question! What do you think?", "Let me think about that. What matters most to you?", "Ooh, good question! Tell me more.", "I'm not sure yet. What are the details?"]],
+  ] as const;
+  const hash = [...contact.id].reduce((n, ch) => (n * 31 + ch.charCodeAt(0)) >>> 0, 0);
+  const style = contact.id === "c1" ? 1 : contact.id === "c2" ? 0 : contact.id === "c3" ? 2 : contact.id === "c4" ? 3 : hash % 4;
+  for (const [re, opts] of variants) if (re.test(text)) return opts[style];
+  return ["That sounds great! Tell me more 😊", "I'm here for you. Tell me more.", "I love that! What happened next?", "Got it. Thanks for letting me know."][style];
 }
 
 function Bubble({ m, mine, name, showName, tailless }: { m: Msg; mine: boolean; name?: string; showName: boolean; tailless?: boolean }) {
@@ -48,16 +61,13 @@ function Bubble({ m, mine, name, showName, tailless }: { m: Msg; mine: boolean; 
   );
 }
 
-function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
+function ThreadView({ id, onBack, ai, setAI }: { id: string; onBack: () => void; ai: AIConfig; setAI: React.Dispatch<React.SetStateAction<AIConfig>> }) {
   const t = useData((s) => s.threads.find((x) => x.id === id));
   const contacts = useData((s) => s.contacts);
   const [text, setText] = useState("");
   const [typing, setTyping] = useState(false);
   const [aiSettings, setAiSettings] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(false);
-  const [aiUrl, setAiUrl] = useState("");
-  const [aiModel, setAiModel] = useState("");
-  const [aiKey, setAiKey] = useState("");
+  const [selectedContact, setSelectedContact] = useState("");
   const aiAbort = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -70,7 +80,7 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
     setTimeout(() => endRef.current?.scrollIntoView({ block: "end" }), 30);
   }, [t?.msgs.length, typing]);
   if (!t) return null;
-  const mem = t.members.map((m) => contacts.find((c) => c.id === m)).filter(Boolean);
+  const mem = t.members.map((m) => contacts.find((c) => c.id === m)).filter((c): c is Contact => Boolean(c));
   const title = t.name ?? (mem.length ? contactName(mem[0]) : "New Message");
   const nameOf = (id: string) => contactName(contacts.find((c) => c.id === id));
 
@@ -82,8 +92,11 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
     patchData((s) => ({ threads: s.threads.map((x) => (x.id === id ? { ...x, msgs: [...x.msgs, m] } : x)) }));
     setText("");
     // Messages are local simulations, never sent to the contact. AI is explicitly opt-in.
-    const from = t.members[Math.floor(Math.random() * t.members.length)];
-    if (!from) return;
+    const members = t.members.filter((member) => contacts.some((c) => c.id === member));
+    const priorReplies = t.msgs.filter((message) => members.includes(message.from)).length;
+    const from = members[priorReplies % members.length];
+    const responder = contacts.find((c) => c.id === from);
+    if (!responder) return;
     const deliver = (answer: string) => {
       setTyping(false);
       const r: Msg = { id: newId(), from, text: answer, at: Date.now(), sms: t.sms };
@@ -91,22 +104,24 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
       patchData((s) => ({ threads: s.threads.map((x) => (x.id === id ? { ...x, msgs: [...x.msgs, r], unread: viewing ? 0 : x.unread + 1 } : x)) }));
       if (viewing) sfx.receive(); else useOS.getState().notify({ app: "messages", title: t.name ?? nameOf(from), body: r.text });
     };
-    if (aiEnabled) {
+    if (ai.enabled) {
       let url: URL;
-      try { url = new URL(aiUrl); if (url.protocol !== "https:") throw new Error("HTTPS required"); }
+      try { url = new URL(ai.url); if (url.protocol !== "https:" || url.username || url.password) throw new Error("HTTPS required"); }
       catch { useOS.getState().showToast("AI endpoint must be an HTTPS URL"); return; }
-      if (!aiModel.trim()) { useOS.getState().showToast("Set an AI model in conversation settings"); return; }
+      if (!ai.model.trim()) { useOS.getState().showToast("Set an AI model in conversation settings"); return; }
       setTyping(true);
       const controller = new AbortController(); aiAbort.current = controller;
-      const timeout = window.setTimeout(() => controller.abort(), 25000);
-      const history = [...t.msgs, m].slice(-12).map((item) => ({ role: item.from === "me" ? "user" : "assistant", content: item.text.slice(0, 2000) }));
-      void fetch(url.toString(), { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json", ...(aiKey ? { Authorization: `Bearer ${aiKey}` } : {}) }, body: JSON.stringify({ model: aiModel.trim(), messages: [{ role: "system", content: `You are a fictional messaging contact named ${title}. Reply naturally and briefly. Do not claim to be the real person.` }, ...history], max_tokens: 150 }) })
+      let timedOut = false;
+      const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 25000);
+      const history = [...t.msgs, m].slice(-12).map((item) => ({ role: item.from === "me" ? "user" : "assistant", content: item.from === "me" ? item.text.slice(0, 2000) : `${nameOf(item.from)}: ${item.text.slice(0, 2000)}` }));
+      void fetch(url.toString(), { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json", ...(ai.key ? { Authorization: `Bearer ${ai.key}` } : {}) }, body: JSON.stringify({ model: ai.model.trim(), messages: [{ role: "system", content: `You are a fictional simulated messaging contact named ${contactName(responder)} in ${t.members.length > 1 ? `a group conversation called ${title}` : "a private conversation"}. Your personality: ${personalityOf(responder)}. Respond only as ${contactName(responder)}, naturally and briefly, without a name prefix. Do not claim to be a real person. Other participants in the history are identified by name.` }, ...history], max_tokens: 150 }) })
         .then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
         .then((data) => { const answer = data?.choices?.[0]?.message?.content; if (typeof answer !== "string" || !answer.trim()) throw new Error("Empty response"); deliver(answer.trim().slice(0, 2000)); })
-        .catch(() => { setTyping(false); useOS.getState().showToast("AI reply failed. Check endpoint, model, CORS and credentials."); })
+        .catch(() => { setTyping(false); if (!controller.signal.aborted || timedOut) useOS.getState().showToast("AI reply failed. Check endpoint, model, CORS and credentials."); })
         .finally(() => { clearTimeout(timeout); if (aiAbort.current === controller) aiAbort.current = null; });
     } else {
-      timers.current.push(window.setTimeout(() => setTyping(true), 900), window.setTimeout(() => deliver(reply(v)), 2400 + Math.random() * 1500));
+      setTyping(true);
+      timers.current.push(window.setTimeout(() => deliver(scriptedReply(v, responder)), 1800));
     }
   };
 
@@ -114,14 +129,14 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
   return (
     <div className="relative flex h-full flex-col bg-ios-bg" data-thread={id}>
       <div className="glass absolute inset-x-0 top-0 z-20 flex items-end justify-between px-2 pb-1.5" style={{ height: "calc(var(--safe-top) + 62px)", borderBottom: "0.5px solid var(--ios-sep)" }}>
-        <NavBtn onClick={() => { aiAbort.current?.abort(); setAiKey(""); setAiUrl(""); setAiModel(""); setAiEnabled(false); onBack(); }}>
+        <NavBtn onClick={() => { aiAbort.current?.abort(); onBack(); }}>
           <ChevronLeft size={28} strokeWidth={2.4} className="-ml-1" />
         </NavBtn>
         <div className="flex flex-col items-center pb-0.5">
           <Avatar name={title} hue={mem[0]?.hue ?? 210} size={36} />
           <div className="mt-0.5 flex items-center text-[11px]">{title} · simulated <ChevronLeft size={10} className="rotate-180 text-ios-label3" /></div>
         </div>
-        <NavBtn onClick={() => setAiSettings(true)}><Settings2 size={22} /></NavBtn>
+        <NavBtn onClick={() => { setSelectedContact(t.members[0] || ""); setAiSettings(true); }}><Settings2 size={22} /></NavBtn>
       </div>
       <ScrollView ref={scroller} className="min-h-0 flex-1 px-3">
         <div style={{ height: "calc(var(--safe-top) + 70px)" }} />
@@ -140,7 +155,7 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
                   </div>
                 )}
                 <Bubble m={m} mine={mine} name={nameOf(m.from)} showName={t.members.length > 1 && (!prev || prev.from !== m.from || gap)} tailless={!lastOfRun} />
-                {mine && lastMine?.id === m.id && <div className="mr-1 mt-0.5 text-right text-[11px] font-medium text-ios-label2">Delivered</div>}
+                {mine && lastMine?.id === m.id && <div className="mr-1 mt-0.5 text-right text-[11px] font-medium text-ios-label2">Saved locally</div>}
               </div>
             );
           })}
@@ -156,12 +171,15 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
           <div ref={endRef} />
         </div>
       </ScrollView>
-      {aiSettings && <div className="absolute inset-0 z-40 flex items-end bg-black/45" onClick={() => setAiSettings(false)}><div onClick={(e) => e.stopPropagation()} className="w-full rounded-t-[28px] bg-ios-bg p-5 text-ios-label" style={{ paddingBottom: "calc(var(--safe-bottom) + 20px)" }}>
-        <div className="mb-2 flex items-center justify-between"><h2 className="text-xl font-bold">Simulated replies</h2><button onClick={() => setAiSettings(false)} className="text-ios-blue">Done</button></div>
-        <p className="mb-3 text-sm text-ios-label2">No messages reach real people. AI sends recent conversation text to your chosen provider. Endpoint and key stay in memory until this conversation closes.</p>
-        <label className="mb-3 flex items-center gap-3"><input type="checkbox" checked={aiEnabled} onChange={(e) => setAiEnabled(e.target.checked)}/> Use an AI provider for replies</label>
-        {aiEnabled && <div className="space-y-2"><input value={aiUrl} onChange={(e) => setAiUrl(e.target.value)} placeholder="HTTPS chat completions endpoint" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><input value={aiModel} onChange={(e) => setAiModel(e.target.value)} placeholder="Model name" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><input type="password" autoComplete="off" value={aiKey} onChange={(e) => setAiKey(e.target.value)} placeholder="API key (optional)" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><p className="text-xs text-ios-label2">Requires a browser-accessible OpenAI-compatible endpoint with CORS enabled. Use a limited-scope key.</p></div>}
+      {aiSettings && <div className="absolute inset-0 z-40 flex items-end bg-black/45" onClick={() => setAiSettings(false)}><div onClick={(e) => e.stopPropagation()} className="max-h-[85%] w-full overflow-y-auto rounded-t-[28px] bg-ios-bg p-5 text-ios-label" style={{ paddingBottom: "calc(var(--safe-bottom) + 20px)" }}>
+        <div className="mb-2 flex items-center justify-between"><h2 className="text-xl font-bold">Conversation personalities</h2><button onClick={() => setAiSettings(false)} className="text-ios-blue">Done</button></div>
+        <p className="mb-3 text-sm text-ios-label2">These are fictional conversations, not messages from real people. Personalities stay on this browser.</p>
+        {mem.length > 0 && <><label className="mb-1 block text-sm font-semibold" htmlFor="persona-contact">Contact</label><select id="persona-contact" value={selectedContact} onChange={(e) => setSelectedContact(e.target.value)} className="mb-3 w-full rounded-xl bg-ios-fill p-3">{mem.map((c) => <option key={c.id} value={c.id}>{contactName(c)}</option>)}</select>{mem.filter((c) => c.id === selectedContact).map((c) => <div key={c.id}><label htmlFor="persona-description" className="mb-1 block text-sm font-semibold">Personality for {contactName(c)}</label><textarea id="persona-description" aria-label="Personality" maxLength={600} value={c.personality ?? personalityOf(c)} onChange={(e) => { const personality = e.target.value; patchData((s) => ({ contacts: s.contacts.map((x) => x.id === c.id ? { ...x, personality } : x) })); }} rows={3} className="mb-2 w-full resize-none rounded-xl bg-ios-fill p-3 text-sm outline-none"/><button onClick={() => patchData((s) => ({ contacts: s.contacts.map((x) => x.id === c.id ? { ...x, personality: undefined } : x) }))} className="mb-4 text-sm text-ios-blue">Reset personality</button></div>)}</>}
+        <div className="border-t border-ios-sep pt-3"><label className="mb-3 flex items-center gap-3"><input type="checkbox" checked={ai.enabled} onChange={(e) => setAI((a) => ({ ...a, enabled: e.target.checked }))}/> Use AI for all conversations</label>
+        <p className="mb-3 text-xs text-ios-label2">AI sends recent messages and the selected personality to your chosen provider. Without AI, replies are scripted. Provider settings and key stay in memory until Messages is closed or the page is reloaded.</p>
+        {ai.enabled && <div className="space-y-2"><input value={ai.url} onChange={(e) => setAI((a) => ({ ...a, url: e.target.value }))} placeholder="HTTPS chat completions endpoint" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><input value={ai.model} onChange={(e) => setAI((a) => ({ ...a, model: e.target.value }))} placeholder="Model name" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><input type="password" autoComplete="off" value={ai.key} onChange={(e) => setAI((a) => ({ ...a, key: e.target.value }))} placeholder="API key (optional)" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><p className="text-xs text-ios-label2">Requires a browser-accessible OpenAI-compatible endpoint with CORS enabled. Use a limited-scope key.</p></div>}</div>
       </div></div>}
+
       <div className="flex shrink-0 items-end gap-2 px-3 pb-2 pt-1.5" style={{ paddingBottom: "calc(var(--safe-bottom) + 6px)" }}>
         <button onClick={() => useOS.getState().showToast("Photos & apps aren't available here")} className="mb-0.5 flex h-[32px] w-[32px] shrink-0 items-center justify-center rounded-full bg-ios-fill2 text-ios-label2">
           <Plus size={20} strokeWidth={2.6} />
@@ -188,6 +206,7 @@ function ThreadView({ id, onBack }: { id: string; onBack: () => void }) {
 export default function MessagesApp() {
   const threads = useData((s) => s.threads);
   const contacts = useData((s) => s.contacts);
+  const [ai, setAI] = useState<AIConfig>({ enabled: false, url: "", model: "", key: "" });
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [to, setTo] = useState("");
@@ -257,7 +276,7 @@ export default function MessagesApp() {
         </Page>
       </div>
       <div className="absolute inset-0" style={{ transform: openId ? "none" : "translateX(100%)", transition: "transform .34s cubic-bezier(.3,.8,.2,1)", boxShadow: "-6px 0 18px rgba(0,0,0,.12)" }}>
-        {lastId.current && threads.some((t) => t.id === lastId.current) && <ThreadView key={lastId.current} id={lastId.current} onBack={() => setOpenId(null)} />}
+        {lastId.current && threads.some((t) => t.id === lastId.current) && <ThreadView key={lastId.current} id={lastId.current} onBack={() => setOpenId(null)} ai={ai} setAI={setAI} />}
       </div>
 
       {composing && (

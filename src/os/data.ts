@@ -10,6 +10,7 @@ export interface Contact {
   email: string;
   fav: boolean;
   hue: number;
+  personality?: string; // Fictional messaging persona, stored locally
 }
 export interface Msg {
   id: string;
