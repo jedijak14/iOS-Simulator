@@ -89,7 +89,9 @@ export function ControlCenter() {
   const track = TRACKS[s.music.idx];
   const start = useRef<number | null>(null);
   const [dy, setDy] = useState(0);
-  const cell = (spec.w - 44 - 36) / 4;
+  const panelWidth = Math.min(spec.w - 44, 400);
+  const cell = (panelWidth - 36) / 4;
+  const [connectivity, setConnectivity] = useState(false);
   const close = () => { sfx.sheetClose(); s.set({ cc: false }); };
   const go = (id: string, action?: string) => {
     s.set({ cc: false });
@@ -125,13 +127,14 @@ export function ControlCenter() {
     >
       <div className="absolute inset-0 bg-black/45 backdrop-blur-[40px]" />
       <div
-        className="absolute inset-x-[22px]"
-        style={{ top: spec.safeTop + 6, transform: `scale(${s.cc ? 1 : 0.92}) translateY(${-dy}px)`, transformOrigin: "top right", transition: start.current !== null ? "none" : "transform .35s cubic-bezier(.2,.9,.3,1)" }}
+        className="absolute right-[22px]"
+        style={{ width: panelWidth, top: spec.safeTop + 6, transform: `scale(${s.cc ? 1 : 0.92}) translateY(${-dy}px)`, transformOrigin: "top right", transition: start.current !== null ? "none" : "transform .35s cubic-bezier(.2,.9,.3,1)" }}
         data-cc
       >
         <div className="grid grid-cols-4 gap-3" style={{ gridAutoRows: cell }}>
           {/* connectivity */}
-          <div className="glass-dark col-span-2 row-span-2 grid grid-cols-2 place-items-center rounded-[26px] p-2">
+          <div className="glass-dark col-span-2 row-span-2 grid grid-cols-2 place-items-center rounded-[32px] p-2" onDoubleClick={() => setConnectivity(true)} title="Connectivity controls">
+            <button aria-label="Connectivity details" onClick={() => setConnectivity(true)} className="absolute left-[8px] top-[8px] z-10 h-6 w-6 rounded-full bg-white/10 text-[14px] text-white">⋯</button>
             <Round on={s.airplane} color="#ff9f0a" onClick={() => s.setAirplane(!s.airplane)}>
               <Plane size={24} fill={s.airplane ? "#fff" : "none"} />
             </Round>
@@ -146,6 +149,16 @@ export function ControlCenter() {
             </Round>
           </div>
 
+          {connectivity && <div className="absolute inset-0 z-30 flex flex-col gap-3 rounded-[32px] bg-[#242428]/95 p-4 text-white shadow-2xl backdrop-blur-3xl">
+            <div className="flex items-center justify-between px-2"><strong>Connectivity</strong><button onClick={() => setConnectivity(false)} className="rounded-full bg-white/20 px-4 py-2">Done</button></div>
+            {([
+              ["Airplane Mode", s.airplane, () => s.setAirplane(!s.airplane), Plane],
+              ["Wi-Fi", s.wifi, () => s.set({ wifi: !s.wifi }), Wifi],
+              ["Cellular Data", s.cellular, () => s.set({ cellular: !s.cellular }), Radio],
+              ["Bluetooth", s.bluetooth, () => s.set({ bluetooth: !s.bluetooth }), Bluetooth],
+            ] as const).map(([label, enabled, toggle, Icon]) => <button key={label} onClick={toggle} className="glass-dark flex items-center gap-4 rounded-[26px] p-4 text-left"><span className={`flex h-12 w-12 items-center justify-center rounded-full ${enabled ? "bg-[#0a84ff]" : "bg-white/15"}`}><Icon size={24}/></span><span className="flex-1 font-semibold">{label}<span className="block text-sm font-normal text-white/55">{enabled ? "On" : "Off"}</span></span></button>)}
+            <div className="px-4 text-xs text-white/50">Controls affect this simulator, not your device’s radios.</div>
+          </div>}
           {/* now playing */}
           <div className="glass-dark col-span-2 row-span-2 flex flex-col justify-between overflow-hidden rounded-[26px] p-3 text-white">
             {s.music.active ? (
@@ -227,9 +240,9 @@ export function ControlCenter() {
             <Settings size={22} />
             <span className="text-[15px] font-semibold">Settings</span>
           </Tile>
-          <Tile on={s.charging} color="#30d158" className="col-span-2 !justify-start gap-2.5 px-4" onClick={() => { const next = !s.charging; s.set({ charging: next }); if (next) sfx.charge(); else sfx.toggleOff(); }}>
+          <Tile on={s.charging} color="#30d158" className="col-span-2 !justify-start gap-2.5 px-4" onClick={() => { if (s.batterySource === "device") return s.showToast(`Device battery: ${s.battery}%`); const next = !s.charging; s.set({ charging: next }); if (next) sfx.charge(); else sfx.toggleOff(); }}>
             <Zap size={22} fill={s.charging ? "#000" : "none"} />
-            <span className="text-[15px] font-semibold">{s.charging ? "Charging" : "Plug In"}</span>
+            <span className="text-[15px] font-semibold">{s.batterySource === "device" ? `${s.battery}% · Device` : s.charging ? "Charging (simulated)" : "Plug In (simulated)"}</span>
           </Tile>
         </div>
         <div className="mt-4 text-center text-[12px] text-white/50">Tap anywhere or swipe up to close</div>

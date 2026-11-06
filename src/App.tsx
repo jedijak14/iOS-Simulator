@@ -20,6 +20,8 @@ import { useOS, useDark } from "./os/store";
 import { AirDropDropZone } from "./os/StandBy";
 import { IntroAnimation } from "./os/IntroAnimation";
 import { sendAction } from "./os/actions";
+import { APPS } from "./os/registry";
+import { AppIcon } from "./os/icons";
 
 const BEZEL = 5; // titanium rim
 
@@ -76,6 +78,8 @@ export default function App() {
 
   const frameW = spec.w + spec.bezelSide * 2 + BEZEL * 2;
   const frameH = spec.h + spec.bezelTop + spec.bezelBottom + BEZEL * 2 - (spec.homeButton ? 0 : 0);
+  const [appCategory, setAppCategory] = useState("All");
+  const installed = useOS((s) => s.installed);
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
   // Always show the sidebar control panel (compact on small screens)
   const showPanel = true;
@@ -259,7 +263,7 @@ export default function App() {
           <div className="mb-1 flex items-center gap-2 text-[17px] font-semibold">
             <SlidersHorizontal size={18} /> Simulator
           </div>
-          <div className="mb-4 text-[12px] text-white/50">iOS 17 · {spec.name}</div>
+          <div className="mb-4 text-[12px] text-white/50">iOS-inspired simulator · {spec.name}</div>
 
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Device</div>
           <div className="mb-4 flex flex-col gap-1.5">
@@ -277,6 +281,9 @@ export default function App() {
             ))}
           </div>
 
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Apps by category</div>
+          <select aria-label="App category" value={appCategory} onChange={(e) => setAppCategory(e.target.value)} className="mb-2 w-full rounded-lg bg-[#292a30] px-3 py-2 text-sm text-white"><option>All</option>{[...new Set(installed.map((id) => APPS[id]?.category).filter(Boolean))].sort().map((category) => <option key={category}>{category}</option>)}</select>
+          <div className="mb-4 max-h-48 overflow-y-auto rounded-xl bg-black/15 p-1">{installed.filter((id) => APPS[id] && (appCategory === "All" || APPS[id].category === appCategory)).map((id) => <button key={id} aria-label={`Open ${APPS[id].name} app`} onClick={() => s().openApp(id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-white/10"><AppIcon id={id} size={25}/>{APPS[id].name}</button>)}</div>
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Finish</div>
           <div className="mb-4 flex gap-2.5">
             {COLORS.map((c) => (

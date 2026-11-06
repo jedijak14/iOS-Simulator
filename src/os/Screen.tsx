@@ -51,6 +51,24 @@ export function Screen() {
     return () => clearInterval(id);
   }, []);
 
+  // Battery Status is not available in every browser (notably Safari/Firefox).
+  // Keep the simulator fallback when the host does not expose it.
+  useEffect(() => {
+    type BatteryManager = EventTarget & { level: number; charging: boolean };
+    const nav = navigator as Navigator & { getBattery?: () => Promise<BatteryManager> };
+    let disposed = false;
+    let manager: BatteryManager | undefined;
+    const update = () => { if (manager && !disposed) useOS.setState({ battery: Math.round(manager.level * 100), charging: manager.charging, batterySource: "device" }); };
+    nav.getBattery?.().then((battery) => {
+      if (disposed) return;
+      manager = battery;
+      update();
+      battery.addEventListener("levelchange", update);
+      battery.addEventListener("chargingchange", update);
+    }).catch(() => {});
+    return () => { disposed = true; manager?.removeEventListener("levelchange", update); manager?.removeEventListener("chargingchange", update); };
+  }, []);
+
   // dismiss keyboard when context changes
   useEffect(() => {
     (document.activeElement as HTMLElement | null)?.blur?.();

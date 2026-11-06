@@ -11,6 +11,8 @@ function icon(slug: string, sourceSize: 512 | 1024 = 1024): string {
 
 /** Map of simulator app id → iOS Icon Gallery artwork. */
 export const APP_ICON_URLS: Record<string, string> = {
+  // The iOS gallery has no dedicated Siri entry; use its Shortcuts artwork as a fallback.
+  siriapp: icon("shortcuts-2025-10-20"),
   phone: icon("phone-2025-10-20"),
   messages: icon("messages-2025-10-20"),
   safari: icon("safari-2025-10-20"),

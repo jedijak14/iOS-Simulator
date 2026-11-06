@@ -38,7 +38,7 @@ async function wiki(q: string): Promise<string | null> {
   }
 }
 
-async function handle(raw: string): Promise<string> {
+export async function handleSiriRequest(raw: string): Promise<string> {
   const st = useOS.getState();
   const q = raw.toLowerCase().replace(/[?!.]+$/, "").trim();
   let m: RegExpMatchArray | null;
@@ -173,6 +173,12 @@ async function handle(raw: string): Promise<string> {
     return "Volume decreased.";
   }
 
+  if (/battery (level|percentage)|how much battery/.test(q)) return `Battery is at ${st.battery} percent${st.batterySource === "device" ? " on this device" : " (simulated)"}.`;
+  if ((m = q.match(/(?:set )?(brightness|volume) (?:to )?(\d{1,3})\s*(?:percent|%)?/))) {
+    const value = Math.min(100, Number(m[2])) / 100;
+    st.set(m[1] === "brightness" ? { brightness: Math.max(.12, value) } : { volume: value });
+    return `${m[1] === "brightness" ? "Brightness" : "Volume"} set to ${Math.round(value * 100)} percent.`;
+  }
   if (/weather|temperature|forecast/.test(q)) {
     const city = useData.getState().cities[0];
     try {
@@ -259,7 +265,7 @@ export function Siri() {
     setLines((l) => [...l, { role: "me", text: q }]);
     setText("");
     setBusy(true);
-    const a = await handle(q);
+    const a = await handleSiriRequest(q);
     setBusy(false);
     setLines((l) => [...l, { role: "siri", text: a }]);
     const st = useOS.getState();

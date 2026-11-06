@@ -17,6 +17,7 @@ export interface DeviceSpec {
 }
 
 export const DEVICES: DeviceSpec[] = [
+  { id: "ipad", name: "iPad (simulated)", model: "iPad", w: 768, h: 1024, radius: 28, island: false, homeButton: false, safeTop: 32, safeBottom: 24, kbH: 300, rows: 6, bezelTop: 14, bezelBottom: 14, bezelSide: 14 },
   {
     id: "15pro",
     name: "iPhone 15 Pro",

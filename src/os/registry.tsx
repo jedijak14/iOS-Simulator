@@ -6,6 +6,7 @@ import MusicApp from "../apps/Music";
 import MailApp from "../apps/Mail";
 import ClockApp from "../apps/Clock";
 import MapsApp from "../apps/Maps";
+import SiriApp from "../apps/SiriApp";
 import CameraApp from "../apps/Camera";
 import RemindersApp from "../apps/Reminders";
 import NotesApp from "../apps/Notes";
@@ -91,6 +92,7 @@ export const APPS: Record<string, AppDef> = {
       { label: "Start Stopwatch", action: "stopwatch" },
     ],
   },
+  siriapp: { id: "siriapp", name: "Siri", Comp: SiriApp, category: "Utilities", system: true },
   maps: { id: "maps", name: "Maps", Comp: MapsApp, category: "Information & Reading", system: true },
   camera: { id: "camera", name: "Camera", Comp: CameraApp, light: true, category: "Creativity", system: true },
   reminders: { id: "reminders", name: "Reminders", Comp: RemindersApp, category: "Productivity & Finance", system: true, actions: [{ label: "New Reminder", action: "new" }] },

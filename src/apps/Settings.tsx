@@ -757,9 +757,9 @@ export default function SettingsApp() {
           <Sub title="Battery">
             <Group>
               <Row title="Low Power Mode" right={<Toggle on={s.lowPower} onChange={(v) => s.set({ lowPower: v })} />} />
-              <Row title="Charging" right={<Toggle on={s.charging} onChange={(v) => { s.set({ charging: v }); if (v) sfx.charge(); }} />} />
+              {s.batterySource === "simulated" ? <Row title="Charging (simulated)" right={<Toggle on={s.charging} onChange={(v) => { s.set({ charging: v }); if (v) sfx.charge(); }} />} /> : <Row title="Battery source" value="This device" />}
             </Group>
-            <Group header="Battery Level">
+            <Group header={`Battery Level · ${s.batterySource === "device" ? "This device" : "Simulated (browser API unavailable)"}`}>
               <div className="p-4">
                 <div className="text-[34px] font-semibold">
                   {s.battery}% {s.charging && <span className="text-[20px] text-ios-green">⚡ Charging</span>}
@@ -767,6 +767,7 @@ export default function SettingsApp() {
                 <div className="mt-2 h-3 overflow-hidden rounded-full bg-ios-fill2">
                   <div className="h-full rounded-full" style={{ width: `${s.battery}%`, background: s.charging ? "var(--ios-green)" : s.lowPower ? "var(--ios-yellow)" : s.battery <= 20 ? "var(--ios-red)" : "var(--ios-green)" }} />
                 </div>
+                <div className="mt-4 text-xs text-ios-label2">Illustrative activity, not device battery history</div>
                 <div className="mt-5 flex h-20 items-end gap-[3px]">
                   {bars.map((b, i) => (
                     <div key={i} className="flex-1 rounded-t bg-ios-green" style={{ height: `${b}%`, opacity: 0.4 + (i / bars.length) * 0.6 }} />

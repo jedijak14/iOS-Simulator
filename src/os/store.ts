@@ -82,6 +82,7 @@ export const DEFAULT_LAYOUT: LayoutItem[] = [
   { t: "widget", id: "weather", w: 4, h: 2 },
   { t: "widget", id: "calendar", w: 2, h: 2 },
   { t: "widget", id: "photos", w: 2, h: 2 },
+  { t: "app", id: "siriapp" },
   { t: "app", id: "facetime" },
   { t: "app", id: "calendar" },
   { t: "app", id: "photos" },
@@ -114,7 +115,7 @@ export const DEFAULT_LAYOUT: LayoutItem[] = [
 ];
 export const DEFAULT_DOCK = ["phone", "safari", "messages", "music"];
 export const DEFAULT_INSTALLED = [
-  "phone","safari","messages","music","mail","clock","maps","camera",
+  "siriapp","phone","safari","messages","music","mail","clock","maps","camera",
   "reminders","notes","stocks","wallet","photos","weather","calendar",
   "appstore","settings","calculator","compass","voicememos",
   "contacts","facetime","health","translate","files","shortcuts",
@@ -200,6 +201,7 @@ export interface OSState {
   alarms: Alarm[];
   battery: number;
   charging: boolean;
+  batterySource: "device" | "simulated";
   welcomed: boolean;
   iconMode: IconMode;
 
@@ -323,6 +325,7 @@ export const useOS = create<OSState>()(
       ],
       battery: 87,
       charging: false,
+      batterySource: "simulated",
       welcomed: false,
       iconMode: "default",
 
@@ -556,7 +559,7 @@ export const useOS = create<OSState>()(
         }
         // battery
         const interval = s.charging ? 20_000 : s.lowPower ? 240_000 : 120_000;
-        if (now - lastBat >= interval) {
+        if (s.batterySource === "simulated" && now - lastBat >= interval) {
           lastBat = now;
           const b = clamp(s.battery + (s.charging ? 1 : -1), 1, 100);
           set({ battery: b });
@@ -621,7 +624,7 @@ export const useOS = create<OSState>()(
     }),
     {
       name: "ios-sim-os",
-      version: 4,
+      version: 5,
       // Migrate older persisted state to include new fields (focus, etc.)
       migrate: (persisted: unknown, fromVersion: number) => {
         const s = (persisted || {}) as Partial<OSState>;
@@ -632,6 +635,10 @@ export const useOS = create<OSState>()(
         // v3 → v4: ensure iconMode field exists (default "default")
         if (fromVersion < 4) {
           if (s.iconMode === undefined) s.iconMode = "default";
+        }
+        if (fromVersion < 5) {
+          if (s.installed && !s.installed.includes("siriapp")) s.installed = [...s.installed, "siriapp"];
+          if (s.layout && !s.layout.some((item) => item.t === "app" && item.id === "siriapp")) s.layout = [...s.layout, { t: "app", id: "siriapp" }];
         }
         return s;
       },

@@ -124,13 +124,13 @@ export default function MapsApp() {
     const imgCache = new Map<string, HTMLImageElement>();
 
     function measure() {
-      const r = ct.getBoundingClientRect();
-      if (r.width < 2 || r.height < 2) return false;
-      sizeRef.current = { w: r.width, h: r.height };
-      cv.width = Math.floor(r.width * dpr);
-      cv.height = Math.floor(r.height * dpr);
-      cv.style.width = `${r.width}px`;
-      cv.style.height = `${r.height}px`;
+      const width = ct.clientWidth, height = ct.clientHeight;
+      if (width < 2 || height < 2) return false;
+      sizeRef.current = { w: width, h: height };
+      if (cv.width !== Math.floor(width * dpr)) cv.width = Math.floor(width * dpr);
+      if (cv.height !== Math.floor(height * dpr)) cv.height = Math.floor(height * dpr);
+      cv.style.width = `${width}px`;
+      cv.style.height = `${height}px`;
       return true;
     }
 
@@ -361,6 +361,7 @@ export default function MapsApp() {
         Z{Math.round(zoom)}
       </div>
 
+      <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer" className="absolute bottom-[134px] right-2 z-10 rounded bg-white/80 px-1 text-[10px] text-black">© OpenStreetMap contributors</a>
       {/* bottom card */}
       <div className="glass absolute inset-x-0 bottom-0 z-20 rounded-t-[16px] shadow-[0_-4px_24px_rgba(0,0,0,.15)]" style={{ height: open ? "calc(100% - var(--safe-top) - 8px)" : undefined, paddingBottom: "var(--safe-bottom)", transition: "height .35s cubic-bezier(.3,.8,.2,1)" }}>
         <button className="mx-auto mt-1.5 block h-[5px] w-9 rounded-full bg-ios-label3" onClick={() => setOpen(!open)} />
@@ -395,7 +396,7 @@ export default function MapsApp() {
                 </div>
               </div>
               <button
-                onClick={() => { sfx.pop(); useOS.getState().showToast(`Directions to ${place.name}`); }}
+                onClick={() => { sfx.pop(); window.open(`https://www.google.com/maps/dir/?api=1&destination=${place.lat},${place.lon}`, "_blank", "noopener,noreferrer"); }}
                 className="flex items-center gap-1 rounded-full bg-ios-blue px-3 py-1.5 text-[14px] font-semibold text-white"
                 style={{ background: "var(--ios-blue)" }}
               >
