@@ -33,6 +33,12 @@ An interactive iPhone simulator that runs in the browser. Built with React 19, T
 - Browsers require a user interaction (click/tap) before audio can play. Click anywhere on the simulator once and sounds will work.
 - Sounds are bundled as base64 data URIs in the single-file build, so they work offline.
 
+## IPA testing
+
+Open **App Store → Test IPA** to upload and analyze real `.ipa` packages locally: XML/binary `Info.plist`, bundle metadata, Mach-O architectures, signing-resource presence, and JSON reports. No server upload occurs during local analysis.
+
+For actual native installation and launch, an authenticated macOS companion is included at `tools/ipa-runner.mjs` (`npm run ipa-runner`). It uses real `xcrun simctl install` / `launch` commands. Browser-only environments cannot execute iOS ARM binaries, and the UI never reports a native launch unless the companion returns success. See [IPA_TESTING.md](IPA_TESTING.md) for setup, security, and limitations.
+
 ## What's new in v3
 
 ### Real iOS app icons (from iosicongallery.com)

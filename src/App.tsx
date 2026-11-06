@@ -19,6 +19,7 @@ import { COLORS, DEVICES } from "./os/devices";
 import { useOS, useDark } from "./os/store";
 import { AirDropDropZone } from "./os/StandBy";
 import { IntroAnimation } from "./os/IntroAnimation";
+import { sendAction } from "./os/actions";
 
 const BEZEL = 5; // titanium rim
 
@@ -325,6 +326,16 @@ export default function App() {
               className={`rounded-lg px-3 py-2 text-left text-[13px] transition ${s().liveActivity?.kind === "delivery" ? "bg-[#0a84ff] text-white" : "bg-white/10 text-white/90 hover:bg-white/20"}`}
             >
               {s().liveActivity?.kind === "delivery" ? "Stop Delivery" : "Track Delivery"} · Dynamic Island
+            </button>
+          </div>
+
+          <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Developer</div>
+          <div className="mb-4 flex flex-col gap-1.5">
+            <button
+              onClick={() => { s().openApp("appstore"); setTimeout(() => sendAction("appstore", "ipa"), 100); }}
+              className="rounded-lg bg-white/10 px-3 py-2 text-left text-[13px] text-white/90 transition hover:bg-white/20"
+            >
+              Test IPA · Upload & analyze package
             </button>
           </div>
 

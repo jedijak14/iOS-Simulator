@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Gamepad2, LayoutGrid, Newspaper, Search, User } from "lucide-react";
+import { Gamepad2, LayoutGrid, Newspaper, PackageOpen, Search, User } from "lucide-react";
 import { useOS } from "../os/store";
 import { APPS } from "../os/registry";
 import { AppIcon } from "../os/icons";
 import { Page, SearchField, TabBar } from "../os/ui";
+import IPATesting from "./IPATesting";
+import { useAppAction } from "../os/actions";
 
-type Tab = "today" | "games" | "apps" | "search";
+type Tab = "today" | "games" | "apps" | "search" | "ipa";
 
 const BLURB: Record<string, string> = {
   phone: "Make calls, manage contacts and keep your recents handy.",
@@ -45,6 +47,7 @@ export default function AppStoreApp() {
   const [tab, setTab] = useState<Tab>("today");
   const [q, setQ] = useState("");
   const [prog, setProg] = useState<Record<string, number>>({});
+  useAppAction("appstore", (action) => { if (action === "ipa") setTab("ipa"); });
 
   const get = (id: string) => {
     setProg((p) => ({ ...p, [id]: 0.02 }));
@@ -147,6 +150,11 @@ export default function AppStoreApp() {
             </div>
           </Page>
         )}
+        {tab === "ipa" && (
+          <Page title="IPA Testing" bg="bg-ios-grouped">
+            <IPATesting />
+          </Page>
+        )}
         {tab === "search" && (
           <Page title="Search" bg="bg-ios-bg">
             <div className="px-4">
@@ -172,6 +180,7 @@ export default function AppStoreApp() {
           { id: "games", label: "Games", icon: Gamepad2 },
           { id: "apps", label: "Apps", icon: LayoutGrid },
           { id: "search", label: "Search", icon: Search },
+          { id: "ipa", label: "Test IPA", icon: PackageOpen },
         ]}
         value={tab}
         onChange={setTab}
