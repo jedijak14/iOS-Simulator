@@ -17,6 +17,8 @@ export interface DeviceSpec {
 }
 
 export const DEVICES: DeviceSpec[] = [
+  { id: "duo-inner", name: "iPhone Duo · open (concept)", model: "Concept", w: 720, h: 820, radius: 42, island: true, homeButton: false, safeTop: 54, safeBottom: 34, kbH: 290, rows: 6, bezelTop: 11, bezelBottom: 11, bezelSide: 11 },
+  { id: "duo-outer", name: "iPhone Duo · closed (concept)", model: "Concept", w: 393, h: 852, radius: 55, island: true, homeButton: false, safeTop: 54, safeBottom: 34, kbH: 291, rows: 6, bezelTop: 11, bezelBottom: 11, bezelSide: 11 },
   { id: "ipad", name: "iPad (simulated)", model: "iPad", w: 768, h: 1024, radius: 28, island: false, homeButton: false, safeTop: 32, safeBottom: 24, kbH: 300, rows: 6, bezelTop: 14, bezelBottom: 14, bezelSide: 14 },
   {
     id: "15pro",

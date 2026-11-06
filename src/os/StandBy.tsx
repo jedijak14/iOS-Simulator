@@ -1,7 +1,8 @@
+import { saveImportedFile } from "./importedFiles";
 import { useEffect, useState } from "react";
 import { Check, X, FileText, Image as ImageIcon, Download } from "lucide-react";
 import { useOS, useNow } from "./store";
-import { patchData, newId } from "./data";
+import { newId } from "./data";
 import { sfx } from "./sound";
 import { fmtTime } from "./utils";
 
@@ -93,6 +94,7 @@ export function AirDropOverlay() {
   const airdrop = useOS((s) => s.airdrop);
   const set = useOS((s) => s.set);
   const [phase, setPhase] = useState<"incoming" | "receiving" | "done">("incoming");
+  const [error, setError] = useState("");
 
   useEffect(() => {
     if (!airdrop) {
@@ -113,21 +115,26 @@ export function AirDropOverlay() {
           set({ airdrop: { ...airdrop, progress: p, phase: "receiving" } });
         }
       }, 120);
+      return () => clearInterval(id);
     }
   }, [airdrop?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!airdrop) return;
     if (airdrop.phase === "done") {
-      // Auto-save into Photos (if image) or Files (otherwise)
-      if (airdrop.type === "image" && airdrop.url) {
-        patchData((s) => ({ photos: [{ id: newId(), src: airdrop.url!, at: Date.now(), fav: false, kind: "photo" as const }, ...s.photos] }));
-        useOS.getState().showToast("Saved to Photos via AirDrop");
-      } else {
-        useOS.getState().showToast(`Saved "${airdrop.name}" to Files via AirDrop`);
-      }
-      const t = setTimeout(() => set({ airdrop: null }), 1800);
-      return () => clearTimeout(t);
+      let cancelled = false;
+      (async () => {
+        if (!airdrop.url) { setError("This was only a demonstration; no file was received."); return; }
+        try {
+          const response = await fetch(airdrop.url);
+          if (!response.ok) throw new Error("Unable to read the file");
+          const blob = await response.blob();
+          await saveImportedFile({ id: newId(), name: airdrop.name, blob, modified: Date.now() });
+          URL.revokeObjectURL(airdrop.url);
+          if (!cancelled) { useOS.getState().showToast("Saved to Files on this browser"); setTimeout(() => set({ airdrop: null }), 1800); }
+        } catch { if (!cancelled) setError("Could not save the file. Check browser storage and try again."); }
+      })();
+      return () => { cancelled = true; };
     }
   }, [airdrop?.phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -140,6 +147,8 @@ export function AirDropOverlay() {
   };
   const decline = () => {
     sfx.toggleOff();
+    if (airdrop.url) URL.revokeObjectURL(airdrop.url);
+    setError("");
     set({ airdrop: null });
   };
 
@@ -159,7 +168,7 @@ export function AirDropOverlay() {
         {phase === "incoming" && (
           <>
             <div className="mb-4 text-[14px] text-ios-label2">
-              <b>AirPods Pro</b> wants to share {airdrop.type === "image" ? "a photo" : "a file"} with you.
+              Import this local {airdrop.type === "image" ? "photo" : "file"} into the simulator? This is not Apple AirDrop.
             </div>
             <div className="flex gap-2">
               <button onClick={decline} className="flex-1 rounded-xl bg-ios-fill py-2.5 text-[15px] font-semibold text-ios-label" style={{ background: "var(--ios-fill)" }}>
@@ -187,8 +196,9 @@ export function AirDropOverlay() {
             <div className="mx-auto mb-2 flex h-12 w-12 items-center justify-center rounded-full bg-ios-green" style={{ background: "var(--ios-green)" }}>
               <Check size={28} className="text-white" strokeWidth={3} />
             </div>
-            <div className="text-[15px] font-semibold">Saved</div>
-            <div className="text-[12px] text-ios-label2">{airdrop.type === "image" ? "Added to Photos" : "Added to Files"}</div>
+            <div className="text-[15px] font-semibold">{error ? "Import unavailable" : "Saving to Files…"}</div>
+            <div className="text-[12px] text-ios-label2">{error || "Stored locally in this browser"}</div>
+            {error && <button className="mt-3 text-ios-blue" onClick={decline}>Close</button>}
           </div>
         )}
       </div>
@@ -241,7 +251,7 @@ export function AirDropDropZone() {
       <div className="rounded-3xl border-4 border-dashed border-white p-12 text-center text-white" style={{ animation: "popIn 0.2s ease-out" }}>
         <Download size={56} className="mx-auto mb-3" />
         <div className="text-[20px] font-bold" style={{ letterSpacing: "-0.018em" }}>Drop to AirDrop</div>
-        <div className="mt-1 text-[14px] text-white/70">Files will be saved to Photos or Files</div>
+        <div className="mt-1 text-[14px] text-white/70">Files will be imported into local Files storage</div>
       </div>
     </div>
   );

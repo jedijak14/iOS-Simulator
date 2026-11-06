@@ -307,7 +307,7 @@ export const useOS = create<OSState>()(
       wallpaper: "aurora",
       lockWallpaper: "aurora",
       passcode: null,
-      faceId: true,
+      faceId: false,
       autoLock: 300,
       deviceName: "iPhone",
       use24h: false,

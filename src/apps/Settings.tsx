@@ -37,6 +37,8 @@ import { BackBtn, Group, Page, Row, SearchField, Segmented, Slider, Spinner, Tog
 import { sfx } from "../os/sound";
 import { fmtTime } from "../os/utils";
 import { useNow } from "../os/store";
+import { clearImportedFiles } from "../os/importedFiles";
+import { hasDeviceAuth, registerDeviceAuth, removeDeviceAuth } from "../os/deviceAuth";
 
 interface RowDef {
   id: string;
@@ -130,7 +132,8 @@ function PasscodeFlow({ mode, onDone }: { mode: "set" | "off" | "change"; onDone
     if (step === "old") {
       if (v === s.passcode) {
         if (mode === "off") {
-          s.set({ passcode: null });
+          removeDeviceAuth();
+          s.set({ passcode: null, faceId: false });
           s.showToast("Passcode turned off");
           onDone();
         } else {
@@ -207,6 +210,17 @@ export default function SettingsApp() {
   const [stack, setStack] = useState<string[]>(["root"]);
   const [leaving, setLeaving] = useState(false);
   const [q, setQ] = useState("");
+  const [profile, setProfile] = useState(() => { try { return JSON.parse(localStorage.getItem("ios-sim-profile") || "null") as { name: string; email: string } | null; } catch { return null; } });
+  const [profileName, setProfileName] = useState(profile?.name || "");
+  const [profileEmail, setProfileEmail] = useState(profile?.email || "");
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [voice, setVoice] = useState(() => localStorage.getItem("ios-sim-siri-voice") || "");
+  useEffect(() => {
+    if (!("speechSynthesis" in window)) return;
+    const load = () => setVoices(window.speechSynthesis.getVoices()); load();
+    window.speechSynthesis.addEventListener("voiceschanged", load);
+    return () => window.speechSynthesis.removeEventListener("voiceschanged", load);
+  }, []);
   const [checking, setChecking] = useState(false);
   const [checked, setChecked] = useState(false);
   const [preferences, setPreferences] = useState({
@@ -246,7 +260,7 @@ export default function SettingsApp() {
             Object.keys(localStorage)
               .filter((k) => k.startsWith("ios-sim"))
               .forEach((k) => localStorage.removeItem(k));
-            location.reload();
+            void clearImportedFiles().catch(() => {}).finally(() => location.reload());
           },
         },
         { text: "Cancel", style: "cancel", bold: true },
@@ -297,11 +311,11 @@ export default function SettingsApp() {
             <Group>
               <Row
                 leading={<div className="flex h-[56px] w-[56px] items-center justify-center rounded-full bg-gradient-to-b from-[#9aa0aa] to-[#6c727d] text-[22px] font-medium text-white">AA</div>}
-                title={<span className="text-[20px]">Alex Appleseed</span>}
-                subtitle="Apple ID, iCloud+, Media & Purchases"
+                title={<span className="text-[20px]">{profile?.name || "Simulator Profile"}</span>}
+                subtitle={profile ? "Local profile · not an Apple Account" : "Create a local profile or visit Apple"}
                 chevron
                 minH={76}
-                onClick={() => s.showToast("Signed in as alex@icloud.com")}
+                onClick={() => push("account")}
               />
             </Group>
           )}
@@ -351,6 +365,9 @@ export default function SettingsApp() {
         </Sub>
       );
     }
+
+    if (id === "account") return <Sub title="Simulator Profile"><Group footer="This profile is stored only in this browser. It is not an Apple Account, has no password, and does not sign in to iCloud or Apple services."><div className="space-y-3 p-4"><input value={profileName} onChange={(e) => setProfileName(e.target.value)} placeholder="Display name" className="w-full rounded-xl bg-ios-fill px-4 py-3 outline-none"/><input value={profileEmail} onChange={(e) => setProfileEmail(e.target.value)} placeholder="Email (optional)" type="email" className="w-full rounded-xl bg-ios-fill px-4 py-3 outline-none"/><button onClick={() => { const next = { name: profileName.trim(), email: profileEmail.trim() }; if (!next.name) return; localStorage.setItem("ios-sim-profile", JSON.stringify(next)); setProfile(next); s.showToast("Local profile saved"); }} disabled={!profileName.trim()} className="w-full rounded-xl bg-ios-blue py-3 font-semibold text-white disabled:opacity-40">Save local profile</button>{profile && <button onClick={() => { localStorage.removeItem("ios-sim-profile"); setProfile(null); setProfileName(""); setProfileEmail(""); }} className="w-full rounded-xl bg-ios-fill py-3 text-ios-red">Remove local profile</button>}</div></Group><Group footer="Apple manages Apple Account creation and sign-in on its own website. This simulator never asks for your Apple password."><Row title="Manage or create Apple Account" chevron onClick={() => window.open("https://account.apple.com/", "_blank", "noopener,noreferrer")} /></Group></Sub>;
+    if (id === "siri") return <Sub title="Siri & Search"><Group footer="Uses voices provided by your browser and operating system; this is not Apple's Siri voice."><div className="p-4"><label className="mb-2 block text-sm font-semibold" htmlFor="siri-voice">Assistant voice</label><select id="siri-voice" value={voice} onChange={(e) => { setVoice(e.target.value); localStorage.setItem("ios-sim-siri-voice", e.target.value); }} className="w-full rounded-xl bg-ios-fill p-3"><option value="">System default</option>{voices.map((v) => <option value={v.voiceURI} key={v.voiceURI}>{v.name} · {v.lang}</option>)}</select><button onClick={() => { if (!("speechSynthesis" in window)) return s.showToast("Voice playback unavailable"); const u = new SpeechSynthesisUtterance("Hello. How can I help you today?"); const selected = voices.find((v) => v.voiceURI === voice); if (selected) u.voice = selected; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); }} className="mt-3 text-ios-blue">Preview voice</button></div></Group><Group footer={INFO.siri[1]}><Row title="Assistant" value="Simulated" /></Group></Sub>;
 
     if (INFO[id])
       return (
@@ -733,9 +750,7 @@ export default function SettingsApp() {
       case "faceid":
         return (
           <Sub title="Face ID & Passcode">
-            <Group header="Use Face ID For" footer="With Face ID off, you'll need to enter your passcode to unlock the simulator.">
-              <Row title="iPhone Unlock" right={<Toggle on={s.faceId} onChange={(v) => s.set({ faceId: v })} />} />
-            </Group>
+            <Group header="Device authentication" footer="Uses your browser's platform authenticator, such as Face ID, Touch ID, or Windows Hello when available. This is not Apple's Face ID API and does not secure simulator data against someone controlling this browser."><Row title="Use device authentication" right={<Toggle on={s.faceId && hasDeviceAuth()} onChange={(v) => { if (!v) { removeDeviceAuth(); s.set({ faceId: false }); return; } if (!s.passcode) return s.showToast("Set a simulator passcode first"); void registerDeviceAuth().then(() => { s.set({ faceId: true }); s.showToast("Device authentication enabled"); }).catch((e: Error) => s.showToast(e.message || "Device authentication was cancelled")); }} />} /></Group>
             <Group>
               {!s.passcode && <Row title={<span className="text-ios-blue">Turn Passcode On</span>} onClick={() => push("pass-set")} />}
               {s.passcode && <Row title={<span className="text-ios-blue">Turn Passcode Off</span>} onClick={() => push("pass-off")} />}

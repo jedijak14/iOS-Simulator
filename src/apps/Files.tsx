@@ -1,9 +1,10 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ChevronLeft, Folder, FileText, Image as ImageIcon, Music, Film, Search as SearchIcon, Plus, Cloud, Trash2, Star, Download, ChevronRight, MoreHorizontal } from "lucide-react";
 import { Group, Page, Row, SearchField, Sheet, NavBtn, Empty, Segmented } from "../os/ui";
 import { useOS } from "../os/store";
 import { share } from "../os/share";
 import { sfx } from "../os/sound";
+import { listImportedFiles, type ImportedFile } from "../os/importedFiles";
 
 export interface FSNode {
   id: string;
@@ -75,6 +76,13 @@ function fmtDate(ts?: number) {
 }
 
 export default function FilesApp() {
+  const [imports, setImports] = useState<ImportedFile[]>([]);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => { listImportedFiles().then((items) => { if (active) setImports(items); }).catch(() => {}); };
+    refresh(); window.addEventListener("ios-imported-files-changed", refresh);
+    return () => { active = false; window.removeEventListener("ios-imported-files-changed", refresh); };
+  }, []);
   const [path, setPath] = useState<string[]>([]); // ids of folders from root to current
   const [q, setQ] = useState("");
   const [view, setView] = useState<"browse" | "recent" | "search">("browse");
@@ -82,7 +90,14 @@ export default function FilesApp() {
   const set = useOS((s) => s.set);
   void set;
 
-  const all = [...ROOT, ...FILES];
+  const all = useMemo<FSNode[]>(() => [...ROOT, ...FILES, ...imports.map((f) => ({ id: f.id, name: f.name, kind: (f.blob.type.startsWith("image/") ? "image" : f.blob.type.startsWith("audio/") ? "audio" : f.blob.type.startsWith("video/") ? "video" : "doc") as FSNode["kind"], parent: "f4", size: `${(f.blob.size / 1024).toFixed(1)} KB`, modified: f.modified }))], [imports]);
+  const [importUrl, setImportUrl] = useState("");
+  useEffect(() => {
+    const file = imports.find((f) => f.id === sel);
+    if (!file) { setImportUrl(""); return; }
+    const url = URL.createObjectURL(file.blob); setImportUrl(url);
+    return () => URL.revokeObjectURL(url);
+  }, [imports, sel]);
   const currentId = path[path.length - 1] ?? null;
   const items = useMemo(() => {
     if (view === "recent") {
@@ -99,7 +114,7 @@ export default function FilesApp() {
       if (b.kind === "folder" && a.kind !== "folder") return 1;
       return (b.modified ?? 0) - (a.modified ?? 0);
     });
-  }, [currentId, view, q]);
+  }, [currentId, view, q, all]);
 
   const open = (n: FSNode) => {
     if (n.kind === "folder") {
@@ -204,10 +219,11 @@ export default function FilesApp() {
             }
           >
             <div className="px-4">
-              {selNode.kind === "image" && selNode.url && (
-                <img src={selNode.url} alt={selNode.name} className="w-full rounded-2xl" />
+              {selNode.kind === "image" && (importUrl || selNode.url) && (
+                <img src={importUrl || selNode.url} alt={selNode.name} className="w-full rounded-2xl" />
               )}
-              {selNode.kind === "doc" && (
+              {importUrl && <a href={importUrl} download={selNode.name} className="mb-4 block rounded-xl bg-ios-blue px-4 py-3 text-center font-semibold text-white">Download original file</a>}
+              {selNode.kind === "doc" && !importUrl && (
                 <div className="rounded-2xl bg-ios-cell p-6">
                   <FileText size={48} className="mx-auto mb-3 text-ios-label2" />
                   <div className="text-[15px] leading-relaxed text-ios-label2">

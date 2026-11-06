@@ -1,3 +1,4 @@
+import { hasDeviceAuth, verifyDeviceAuth } from "./deviceAuth";
 import { useEffect, useRef, useState } from "react";
 import { Camera, Delete, Flashlight, Lock, LockOpen, Pause, Play, SkipBack, SkipForward, X } from "lucide-react";
 import { useOS, useNow } from "./store";
@@ -119,7 +120,6 @@ export function LockScreen() {
   const locked = useOS((s) => s.locked);
   const screenOn = useOS((s) => s.screenOn);
   const passcode = useOS((s) => s.passcode);
-  const faceId = useOS((s) => s.faceId);
   const flash = useOS((s) => s.flashlight);
   const wallpaper = useOS((s) => s.lockWallpaper);
   const set = useOS((s) => s.set);
@@ -133,6 +133,7 @@ export function LockScreen() {
   const temp = useTemp();
   const now = useNow(1000);
   const [dy, setDy] = useState(0);
+  const faceId = useOS((s) => s.faceId);
   const [drag, setDrag] = useState(false);
   const [face, setFace] = useState<"idle" | "scan" | "ok">("idle");
   const [pad, setPad] = useState(false);
@@ -169,9 +170,9 @@ export function LockScreen() {
     if (!passcode) {
       setFace("scan");
       setTimeout(finish, 350);
-    } else if (faceId) {
+    } else if (faceId && hasDeviceAuth()) {
       setFace("scan");
-      setTimeout(finish, 900);
+      void verifyDeviceAuth().then((ok) => { const state = useOS.getState(); if (ok && state.locked && state.screenOn && state.faceId && hasDeviceAuth()) finish(); else { setFace("idle"); setPad(true); } }).catch(() => { setFace("idle"); setPad(true); });
     } else setPad(true);
   };
 
@@ -190,13 +191,7 @@ export function LockScreen() {
       setTimeout(() => useOS.getState().openApp(app), 30);
     };
     if (!passcode) go();
-    else if (faceId) {
-      setFace("scan");
-      setTimeout(() => {
-        setFace("ok");
-        setTimeout(go, 300);
-      }, 800);
-    } else setPad(true);
+    else setPad(true);
   };
 
   const wp = wallpaperOf(wallpaper);

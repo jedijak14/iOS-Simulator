@@ -199,3 +199,12 @@ When the Wallet Apple Pay flow completes, it now plays the real iOS `payment_suc
 - Real iOS system sounds from github.com/extratone/iOSSystemSounds
 - `getUserMedia` / `MediaRecorder` / `DeviceOrientationEvent` / `Geolocation` for hardware features
 - Inter + Inter Tight (Google Fonts) as the SF Pro fallback typography
+
+## Simulator integrations and limitations
+
+- **Messages:** conversations and contacts are simulations, not SMS or iMessage. In a conversation, open the settings button to opt into AI-generated replies using your own HTTPS OpenAI-compatible chat-completions endpoint and model. Recent message text is sent to that provider. Its server must allow browser CORS. The optional API key stays in component memory, not local storage; closing or changing the conversation clears it. Default replies are scripted.
+- **Device authentication:** Settings → Face ID & Passcode can register a WebAuthn platform authenticator after setting a simulator passcode. The browser may use Face ID, Touch ID, Windows Hello, or another platform authenticator. An assertion is verified locally before unlocking, with a passcode fallback. Availability depends on HTTPS, browser, host, and hardware; Apple's Face ID API is not directly available. Like the simulator passcode and all browser-local state, this is not a security boundary against someone controlling the browser or its data.
+- **File sharing:** the share sheet uses the browser's native share sheet where available. Local file imports are saved in browser IndexedDB and can be downloaded from Files → Recents or On My iPhone → Downloads. This is not Apple's AirDrop protocol or iCloud, and browser data removal removes imports.
+- **Profile:** Settings offers a local display profile and a link to Apple's account website. It does not create or sign in to an Apple Account, and it does not ask for Apple passwords.
+- **Music and Maps:** Music can open YouTube Music search or embed an allowed YouTube video link. Playback is subject to YouTube availability and embedding restrictions; the built-in demo tracks remain separate. Maps uses OpenStreetMap tiles and search, with an optional link to Google Maps directions; it is not MapKit or Google Maps data. Location requires browser permission.
+- **Voice and devices:** Siri's voice can be selected from the browser's available speech voices. The foldable iPhone Duo is a visual concept, not an emulation of a shipping device. iPad is a simulated layout. Liquid Glass is an approximation, not Apple's rendering implementation.

@@ -251,7 +251,8 @@ export function HomeScreen() {
   const cur = Math.min(page, total - 1);
 
   const sidePad = 19;
-  const cellW = (W - sidePad * 2) / 4;
+  const duoInner = spec.id === "duo-inner";
+  const cellW = (W - sidePad * 2 - (duoInner ? 108 : 0)) / 4;
   const dockH = spec.homeButton ? 88 : 96;
   const dockBottom = spec.homeButton ? 6 : 10;
   const dockTop = H - dockBottom - dockH;
@@ -507,7 +508,7 @@ export function HomeScreen() {
       {/* dock */}
       <div
         className="glass-light absolute left-3 right-3 flex items-center justify-around rounded-[36px]"
-        style={{ top: dockTop, height: dockH, opacity: 1 - libP, transform: `translateY(${libP * 40}px)`, pointerEvents: libP > 0.5 ? "none" : "auto", background: "rgba(255,255,255,0.22)" }}
+        style={{ ...(duoInner ? { left: "auto", right: 12, top: "50%", width: 100, height: 360, flexDirection: "column" as const } : { top: dockTop, height: dockH }), opacity: 1 - libP, transform: duoInner ? `translateY(calc(-50% + ${libP * 40}px))` : `translateY(${libP * 40}px)`, pointerEvents: libP > 0.5 ? "none" : "auto", background: "rgba(255,255,255,0.22)" }}
       >
         {dock.map((id, i) => (
           <HomeIcon key={id} id={id} edit={edit} delay={i * 70} label={false} onOpen={open} onMenu={openMenu("app")} onMinus={askRemove} />

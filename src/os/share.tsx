@@ -18,7 +18,7 @@ export interface SharePayload {
 type Target = "copy" | "messages" | "mail" | "notes" | "photos" | "reminders" | "airdrop";
 
 const TARGETS: { id: Target; label: string; icon: typeof MailIcon; bg: string }[] = [
-  { id: "airdrop", label: "AirDrop", icon: Airplay, bg: "#007aff" },
+  { id: "airdrop", label: "Share via device", icon: Airplay, bg: "#007aff" },
   { id: "messages", label: "Messages", icon: MessageCircle, bg: "#34c759" },
   { id: "mail", label: "Mail", icon: MailIcon, bg: "#0a84ff" },
   { id: "notes", label: "Notes", icon: SquarePen, bg: "#ffcc00" },
@@ -58,8 +58,9 @@ export function ShareSheet() {
         setTimeout(close, 700);
         return;
       case "airdrop":
-        useOS.getState().showToast("Looking for nearby devices…");
-        setTimeout(() => useOS.getState().showToast("No nearby devices found"), 1500);
+        if (navigator.share) {
+          void navigator.share({ title: payload.subject, text: text || payload.image || "" }).then(close).catch((error) => { if (error?.name !== "AbortError") useOS.getState().showToast("Sharing unavailable"); });
+        } else useOS.getState().showToast("Native sharing is not supported by this browser");
         return;
       case "messages":
         close();

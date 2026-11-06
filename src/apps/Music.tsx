@@ -133,6 +133,17 @@ export default function MusicApp() {
   const [lib, setLib] = useState<"songs" | "albums">("songs");
   const [q, setQ] = useState("");
   const [full, setFull] = useState(false);
+  const [videoUrl, setVideoUrl] = useState("");
+  const [videoId, setVideoId] = useState("");
+  const [videoError, setVideoError] = useState("");
+  const loadVideo = () => {
+    try {
+      const u = new URL(videoUrl); const host = u.hostname.toLowerCase();
+      const id = host === "youtu.be" ? u.pathname.slice(1) : ["youtube.com", "www.youtube.com", "music.youtube.com", "m.youtube.com"].includes(host) ? (u.searchParams.get("v") || u.pathname.match(/^\/(?:embed|shorts)\/([^/]+)/)?.[1]) : null;
+      if (!id || !/^[A-Za-z0-9_-]{11}$/.test(id)) throw new Error("Invalid URL");
+      music.active && music.playing && musicToggle(); setVideoId(id); setVideoError("");
+    } catch { setVideoError("Enter a valid YouTube or YouTube Music video URL."); }
+  };
   const music = useOS((s) => s.music);
   const t = TRACKS[music.idx];
   const albums = Array.from(new Set(TRACKS.map((x) => x.album)));
@@ -200,6 +211,7 @@ export default function MusicApp() {
             <div className="px-4 pb-2">
               <SearchField value={q} onChange={setQ} placeholder="Artists, Songs, Lyrics, and More" />
             </div>
+            <div className="mx-4 mb-4 rounded-2xl bg-ios-fill p-4"><h2 className="font-semibold">YouTube Music</h2><p className="mt-1 text-sm text-ios-label2">Open YouTube Music search, or paste a video link to play an embeddable video here. Availability depends on YouTube.</p><div className="mt-3 flex gap-2"><input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="YouTube video URL" className="min-w-0 flex-1 rounded-xl bg-ios-bg px-3 py-2 text-sm outline-none"/><button onClick={loadVideo} className="rounded-xl bg-ios-pink px-3 text-sm font-semibold text-white">Load</button></div>{videoError && <p className="mt-2 text-sm text-ios-red">{videoError}</p>}<button onClick={() => window.open(`https://music.youtube.com/search?q=${encodeURIComponent(q || "music")}`, "_blank", "noopener,noreferrer")} className="mt-3 text-sm font-semibold text-ios-blue">Search YouTube Music ↗</button>{videoId && <div className="mt-3"><iframe title="YouTube player" className="aspect-video w-full rounded-xl" src={`https://www.youtube-nocookie.com/embed/${videoId}`} allow="accelerometer; autoplay; encrypted-media; picture-in-picture" allowFullScreen /><button onClick={() => setVideoId("")} className="mt-2 text-sm text-ios-blue">Close player</button></div>}</div>
             {q ? (
               TRACKS.filter((x) => (x.title + x.artist + x.album).toLowerCase().includes(q.toLowerCase())).map((x) => <TrackRow key={x.id} t={x} />)
             ) : (

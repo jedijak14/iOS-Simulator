@@ -273,6 +273,8 @@ export function Siri() {
       try {
         const u = new SpeechSynthesisUtterance(a.slice(0, 220));
         u.volume = Math.max(0.2, st.volume);
+        const selected = window.speechSynthesis.getVoices().find((v) => v.voiceURI === localStorage.getItem("ios-sim-siri-voice"));
+        if (selected) u.voice = selected;
         window.speechSynthesis.speak(u);
       } catch {
         /* ignore */

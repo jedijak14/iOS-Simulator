@@ -59,6 +59,8 @@ export default function MapsApp() {
   const [center, setCenter] = useState<{ lat: number; lon: number }>({ lat: 37.323, lon: -122.0322 });
   const [myLoc, setMyLoc] = useState<{ lat: number; lon: number } | null>(null);
   const [following, setFollowing] = useState(false);
+  const [avatar, setAvatar] = useState(() => localStorage.getItem("ios-sim-map-avatar") || "dot");
+  const [avatarMenu, setAvatarMenu] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragRef = useRef<{ x: number; y: number; cx: number; cy: number } | null>(null);
@@ -224,6 +226,10 @@ export default function MapsApp() {
           ctx.arc(mx, my, 8, 0, Math.PI * 2);
           ctx.fill();
           ctx.stroke();
+          if (avatar !== "dot") {
+            ctx.font = "20px system-ui"; ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(avatar, mx, my - 1); ctx.textBaseline = "alphabetic";
+          }
         }
       }
 
@@ -280,7 +286,7 @@ export default function MapsApp() {
       ro.disconnect();
       clearInterval(id);
     };
-  }, [center, zoom, place, online, myLoc]);
+  }, [center, zoom, place, online, myLoc, avatar]);
 
   // pan + zoom handlers
   const onPointerDown = (e: React.PointerEvent) => {
@@ -347,6 +353,8 @@ export default function MapsApp() {
         <button onClick={locate} className="glass flex h-10 w-10 items-center justify-center rounded-[12px] shadow-lg active:bg-black/10 text-ios-blue">
           <Locate size={20} fill={following ? "currentColor" : "none"} />
         </button>
+        <button onClick={() => setAvatarMenu(!avatarMenu)} title="Customize location marker" aria-label="Customize location marker" className="glass flex h-10 w-10 items-center justify-center rounded-[12px] shadow-lg">{avatar === "dot" ? "●" : avatar}</button>
+        {avatarMenu && <div className="glass flex flex-col gap-1 rounded-xl p-1">{["dot", "🚗", "🚶", "🚲"].map((a) => <button key={a} aria-label={`Use ${a} marker`} onClick={() => { setAvatar(a); localStorage.setItem("ios-sim-map-avatar", a); setAvatarMenu(false); }} className="h-9 w-9 rounded-lg hover:bg-black/10">{a === "dot" ? "●" : a}</button>)}</div>}
         <button
           onClick={() => { setCenter({ lat: place.lat, lon: place.lon }); setFollowing(false); }}
           className="glass flex h-10 w-10 items-center justify-center rounded-[12px] shadow-lg active:bg-black/10 text-ios-red"

@@ -22,6 +22,7 @@ import { IntroAnimation } from "./os/IntroAnimation";
 import { sendAction } from "./os/actions";
 import { APPS } from "./os/registry";
 import { AppIcon } from "./os/icons";
+import { clearImportedFiles } from "./os/importedFiles";
 
 const BEZEL = 5; // titanium rim
 
@@ -95,7 +96,16 @@ export default function App() {
   useEffect(() => {
     useOS.setState({ scale });
   }, [scale]);
+  const previousDevice = useRef(deviceId);
+  const [folding, setFolding] = useState(false);
   useEffect(() => {
+    const isFold = previousDevice.current.startsWith("duo-") && deviceId.startsWith("duo-");
+    previousDevice.current = deviceId;
+    if (isFold) {
+      setFolding(true);
+      const timer = window.setTimeout(() => setFolding(false), 550);
+      return () => clearTimeout(timer);
+    }
     useOS.setState({ homePage: 0, foreground: null, switcher: false, launchRects: {} });
   }, [deviceId]);
 
@@ -201,7 +211,7 @@ export default function App() {
       <IntroAnimation />
       {/* the phone */}
       <div style={{ width: frameW * scale, height: frameH * scale, flexShrink: 0 }}>
-        <div className="relative" style={{ width: frameW, height: frameH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <div className={`relative ${folding ? "duo-fold" : ""}`} style={{ width: frameW, height: frameH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
           {/* flashlight glow */}
           {flashlight && power === "on" && (
             <div className="pointer-events-none absolute left-1/2 -top-10 h-24 w-48 -translate-x-1/2 rounded-full bg-[#fffbe0] opacity-90 blur-2xl" />
@@ -284,6 +294,7 @@ export default function App() {
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Apps by category</div>
           <select aria-label="App category" value={appCategory} onChange={(e) => setAppCategory(e.target.value)} className="mb-2 w-full rounded-lg bg-[#292a30] px-3 py-2 text-sm text-white"><option>All</option>{[...new Set(installed.map((id) => APPS[id]?.category).filter(Boolean))].sort().map((category) => <option key={category}>{category}</option>)}</select>
           <div className="mb-4 max-h-48 overflow-y-auto rounded-xl bg-black/15 p-1">{installed.filter((id) => APPS[id] && (appCategory === "All" || APPS[id].category === appCategory)).map((id) => <button key={id} aria-label={`Open ${APPS[id].name} app`} onClick={() => s().openApp(id)} className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[13px] hover:bg-white/10"><AppIcon id={id} size={25}/>{APPS[id].name}</button>)}</div>
+          {deviceId.startsWith("duo-") && <button onClick={() => useOS.setState({ deviceId: deviceId === "duo-inner" ? "duo-outer" : "duo-inner" })} className="mb-4 w-full rounded-xl bg-white/15 py-2 text-sm font-semibold hover:bg-white/25">{deviceId === "duo-inner" ? "Close concept device" : "Open concept device"}</button>}
           <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-wider text-white/40">Finish</div>
           <div className="mb-4 flex gap-2.5">
             {COLORS.map((c) => (
@@ -415,7 +426,7 @@ export default function App() {
                 Object.keys(localStorage)
                   .filter((k) => k.startsWith("ios-sim"))
                   .forEach((k) => localStorage.removeItem(k));
-                location.reload();
+                void clearImportedFiles().catch(() => {}).finally(() => location.reload());
               }
             }}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/20 py-2 text-[13px] font-medium text-red-300 transition hover:bg-red-500/30"
