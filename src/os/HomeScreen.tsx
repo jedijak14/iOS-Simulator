@@ -474,7 +474,7 @@ export function HomeScreen() {
                   <WidgetBox
                     id={it.id}
                     w={pl.w * cellW - 28}
-                    h={pl.h * cellW - 28}
+                    h={Math.min(pl.h * cellW - 28, pl.h * cellH - 12)}
                     edit={edit}
                     delay={delay}
                     onOpen={(r) => open(WIDGET_APP[it.id] ?? it.id, r)}
@@ -508,7 +508,7 @@ export function HomeScreen() {
       {/* dock */}
       <div
         className="glass-light absolute left-3 right-3 flex items-center justify-around rounded-[36px]"
-        style={{ ...(duoInner ? { left: "auto", right: 12, top: "50%", width: 100, height: 360, flexDirection: "column" as const } : { top: dockTop, height: dockH }), opacity: 1 - libP, transform: duoInner ? `translateY(calc(-50% + ${libP * 40}px))` : `translateY(${libP * 40}px)`, pointerEvents: libP > 0.5 ? "none" : "auto", background: "rgba(255,255,255,0.22)" }}
+        style={{ ...(duoInner ? { left: "auto", right: 12, top: "50%", width: 100, height: 360, flexDirection: "column" as const } : { top: dockTop, height: dockH }), opacity: 1 - libP, transform: duoInner ? `translateY(calc(-50% + ${libP * 40}px))` : `translateY(${libP * 40}px)`, pointerEvents: libP > 0.5 ? "none" : "auto", }}
       >
         {dock.map((id, i) => (
           <HomeIcon key={id} id={id} edit={edit} delay={i * 70} label={false} onOpen={open} onMenu={openMenu("app")} onMinus={askRemove} />

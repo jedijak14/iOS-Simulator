@@ -670,6 +670,9 @@ export default function SettingsApp() {
               </div>
               <Row title="Automatic" right={<Toggle on={s.appearance === "auto"} onChange={(v) => s.set({ appearance: v ? "auto" : dark ? "dark" : "light" })} />} />
             </Group>
+            <Group header="Liquid Glass" footer="Adjust the simulator’s translucent material. This is a visual approximation.">
+              <Slider value={s.glassOpacity} min={0.15} max={0.9} onChange={(v) => s.set({ glassOpacity: v })} left={<span className="text-xs">Clear</span>} right={<span className="text-xs">Tinted</span>} />
+            </Group>
             <Group header="Brightness">
               <Slider value={s.brightness} min={0.12} onChange={(v) => s.set({ brightness: v })} left={<Sun size={16} />} right={<Sun size={22} />} />
             </Group>

@@ -35,6 +35,7 @@ export function Screen() {
   const wallpaper = useOS((s) => s.wallpaper);
   const lockWallpaper = useOS((s) => s.lockWallpaper);
   const brightness = useOS((s) => s.brightness);
+  const glassOpacity = useOS((s) => s.glassOpacity);
   const bold = useOS((s) => s.boldText);
   const reduce = useOS((s) => s.reduceMotion);
   const welcomed = useOS((s) => s.welcomed);
@@ -137,6 +138,7 @@ export function Screen() {
         width: spec.w,
         height: spec.h,
         borderRadius: spec.radius,
+        ["--glass-opacity" as string]: glassOpacity,
         ["--safe-top" as string]: `${spec.safeTop}px`,
         ["--safe-bottom" as string]: `${spec.safeBottom}px`,
       }}

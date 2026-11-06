@@ -82,11 +82,12 @@ export default function App() {
   const [appCategory, setAppCategory] = useState("All");
   const installed = useOS((s) => s.installed);
   const [vp, setVp] = useState({ w: window.innerWidth, h: window.innerHeight });
-  // Always show the sidebar control panel (compact on small screens)
-  const showPanel = true;
-  const compact = vp.w < 920;
-  const panelW = compact ? 220 : 280;
-  const scale = Math.max(0.25, Math.min((vp.w - panelW - 48) / frameW, (vp.h - 40) / frameH, 1.2));
+  const compact = vp.w < 760;
+  const [panelOpen, setPanelOpen] = useState(false);
+  const showPanel = !compact || panelOpen;
+  const panelW = compact ? Math.min(280, vp.w - 32) : 280;
+  const availableW = vp.w - (compact ? 24 : panelW + 48);
+  const scale = Math.max(0.1, Math.min(availableW / frameW, (vp.h - 40) / frameH, 1.2));
 
   useEffect(() => {
     const f = () => setVp({ w: window.innerWidth, h: window.innerHeight });
@@ -97,15 +98,17 @@ export default function App() {
     useOS.setState({ scale });
   }, [scale]);
   const previousDevice = useRef(deviceId);
-  const [folding, setFolding] = useState(false);
+  const [folding, setFolding] = useState<"opening" | "closing" | null>(null);
   useEffect(() => {
     const isFold = previousDevice.current.startsWith("duo-") && deviceId.startsWith("duo-");
     previousDevice.current = deviceId;
     if (isFold) {
-      setFolding(true);
-      const timer = window.setTimeout(() => setFolding(false), 550);
+      setFolding(deviceId === "duo-inner" ? "opening" : "closing");
+      useOS.setState({ launchRects: {}, cc: false, shade: false });
+      const timer = window.setTimeout(() => setFolding(null), 550);
       return () => clearTimeout(timer);
     }
+    setFolding(null);
     useOS.setState({ homePage: 0, foreground: null, switcher: false, launchRects: {} });
   }, [deviceId]);
 
@@ -209,9 +212,10 @@ export default function App() {
     <div className="flex h-full w-full items-center justify-center overflow-hidden" style={{ fontFamily: "var(--font-sf)" }}>
       <AirDropDropZone />
       <IntroAnimation />
+      {compact && <button aria-label={panelOpen ? "Close simulator controls" : "Open simulator controls"} onClick={() => setPanelOpen(!panelOpen)} className="fixed right-3 top-3 z-[400] rounded-full border border-white/20 bg-[#292a30]/90 px-4 py-2 text-sm font-semibold text-white shadow-xl backdrop-blur-xl">{panelOpen ? "Close" : "Controls"}</button>}
       {/* the phone */}
       <div style={{ width: frameW * scale, height: frameH * scale, flexShrink: 0 }}>
-        <div className={`relative ${folding ? "duo-fold" : ""}`} style={{ width: frameW, height: frameH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
+        <div className={`relative ${folding ? `duo-fold duo-${folding}` : ""}`} style={{ width: frameW, height: frameH, transform: `scale(${scale})`, transformOrigin: "top left" }}>
           {/* flashlight glow */}
           {flashlight && power === "on" && (
             <div className="pointer-events-none absolute left-1/2 -top-10 h-24 w-48 -translate-x-1/2 rounded-full bg-[#fffbe0] opacity-90 blur-2xl" />
@@ -269,7 +273,7 @@ export default function App() {
 
       {/* control panel */}
       {showPanel && (
-        <div className="ml-6 shrink-0 rounded-3xl border border-white/10 bg-white/5 p-4 text-white shadow-2xl backdrop-blur-xl" style={{ width: panelW, maxHeight: vp.h - 40, overflowY: "auto" }}>
+        <div className="ml-6 shrink-0 rounded-3xl border border-white/10 bg-white/5 p-4 text-white shadow-2xl backdrop-blur-xl" style={{ width: panelW, maxHeight: vp.h - 80, overflowY: "auto", ...(compact ? { position: "fixed", right: 12, top: 55, zIndex: 399, marginLeft: 0, background: "rgba(31,32,39,.94)" } : {}) }}>
           <div className="mb-1 flex items-center gap-2 text-[17px] font-semibold">
             <SlidersHorizontal size={18} /> Simulator
           </div>

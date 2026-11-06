@@ -6,8 +6,9 @@ import { Avatar, Group, NavBtn, Page, SearchField, SwipeRow, ScrollView } from "
 import { sfx } from "../os/sound";
 import { useAppAction } from "../os/actions";
 import { relTime } from "../os/utils";
+import { getLocalAIState, subscribeLocalAI, loadLocalAI, localAIReply, isLocalAIEnabled, setLocalAIEnabled } from "../os/localAI";
 
-type AIConfig = { enabled: boolean; url: string; model: string; key: string };
+type AIConfig = { enabled: boolean };
 const DEFAULT_PERSONALITIES: Record<string, string> = {
   c1: "Warm, caring and supportive. Checks in on family, speaks affectionately, and occasionally uses a heart emoji.",
   c2: "Upbeat, adventurous and reliable. Loves hiking and making plans; replies casually and with enthusiasm.",
@@ -68,6 +69,8 @@ function ThreadView({ id, onBack, ai, setAI }: { id: string; onBack: () => void;
   const [typing, setTyping] = useState(false);
   const [aiSettings, setAiSettings] = useState(false);
   const [selectedContact, setSelectedContact] = useState("");
+  const [aiStatus, setAIStatus] = useState(getLocalAIState);
+  useEffect(() => subscribeLocalAI(setAIStatus), []);
   const aiAbort = useRef<AbortController | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
@@ -105,20 +108,14 @@ function ThreadView({ id, onBack, ai, setAI }: { id: string; onBack: () => void;
       if (viewing) sfx.receive(); else useOS.getState().notify({ app: "messages", title: t.name ?? nameOf(from), body: r.text });
     };
     if (ai.enabled) {
-      let url: URL;
-      try { url = new URL(ai.url); if (url.protocol !== "https:" || url.username || url.password) throw new Error("HTTPS required"); }
-      catch { useOS.getState().showToast("AI endpoint must be an HTTPS URL"); return; }
-      if (!ai.model.trim()) { useOS.getState().showToast("Set an AI model in conversation settings"); return; }
       setTyping(true);
       const controller = new AbortController(); aiAbort.current = controller;
-      let timedOut = false;
-      const timeout = window.setTimeout(() => { timedOut = true; controller.abort(); }, 25000);
-      const history = [...t.msgs, m].slice(-12).map((item) => ({ role: item.from === "me" ? "user" : "assistant", content: item.from === "me" ? item.text.slice(0, 2000) : `${nameOf(item.from)}: ${item.text.slice(0, 2000)}` }));
-      void fetch(url.toString(), { method: "POST", signal: controller.signal, headers: { "Content-Type": "application/json", ...(ai.key ? { Authorization: `Bearer ${ai.key}` } : {}) }, body: JSON.stringify({ model: ai.model.trim(), messages: [{ role: "system", content: `You are a fictional simulated messaging contact named ${contactName(responder)} in ${t.members.length > 1 ? `a group conversation called ${title}` : "a private conversation"}. Your personality: ${personalityOf(responder)}. Respond only as ${contactName(responder)}, naturally and briefly, without a name prefix. Do not claim to be a real person. Other participants in the history are identified by name.` }, ...history], max_tokens: 150 }) })
-        .then(async (r) => { if (!r.ok) throw new Error(`HTTP ${r.status}`); return r.json(); })
-        .then((data) => { const answer = data?.choices?.[0]?.message?.content; if (typeof answer !== "string" || !answer.trim()) throw new Error("Empty response"); deliver(answer.trim().slice(0, 2000)); })
-        .catch(() => { setTyping(false); if (!controller.signal.aborted || timedOut) useOS.getState().showToast("AI reply failed. Check endpoint, model, CORS and credentials."); })
-        .finally(() => { clearTimeout(timeout); if (aiAbort.current === controller) aiAbort.current = null; });
+      const history = [...t.msgs, m].slice(-8).map((item) => ({ role: item.from === "me" ? "user" as const : "assistant" as const, content: item.from === "me" ? item.text.slice(0, 400) : `${nameOf(item.from)}: ${item.text.slice(0, 400)}` }));
+      const system = `You are a fictional simulated messaging contact named ${contactName(responder)} in ${t.members.length > 1 ? `a group conversation called ${title}` : "a private conversation"}. Your personality: ${personalityOf(responder)}. Respond only as ${contactName(responder)}, naturally and briefly, without a name prefix. Do not claim to be a real person. Other participants in the history are identified by name.`;
+      void localAIReply([{ role: "system", content: system }, ...history], controller.signal)
+        .then(deliver)
+        .catch((error: Error) => { setTyping(false); if (!controller.signal.aborted) useOS.getState().showToast(error.message === "AI is busy" ? "AI is busy with another reply" : "AI reply failed. Check the model in conversation settings."); })
+        .finally(() => { if (aiAbort.current === controller) aiAbort.current = null; });
     } else {
       setTyping(true);
       timers.current.push(window.setTimeout(() => deliver(scriptedReply(v, responder)), 1800));
@@ -134,7 +131,7 @@ function ThreadView({ id, onBack, ai, setAI }: { id: string; onBack: () => void;
         </NavBtn>
         <div className="flex flex-col items-center pb-0.5">
           <Avatar name={title} hue={mem[0]?.hue ?? 210} size={36} />
-          <div className="mt-0.5 flex items-center text-[11px]">{title} · simulated <ChevronLeft size={10} className="rotate-180 text-ios-label3" /></div>
+          <div className="mt-0.5 flex items-center text-[11px]">{title} · {ai.enabled ? "AI" : "scripted"} <ChevronLeft size={10} className="rotate-180 text-ios-label3" /></div>
         </div>
         <NavBtn onClick={() => { setSelectedContact(t.members[0] || ""); setAiSettings(true); }}><Settings2 size={22} /></NavBtn>
       </div>
@@ -175,9 +172,10 @@ function ThreadView({ id, onBack, ai, setAI }: { id: string; onBack: () => void;
         <div className="mb-2 flex items-center justify-between"><h2 className="text-xl font-bold">Conversation personalities</h2><button onClick={() => setAiSettings(false)} className="text-ios-blue">Done</button></div>
         <p className="mb-3 text-sm text-ios-label2">These are fictional conversations, not messages from real people. Personalities stay on this browser.</p>
         {mem.length > 0 && <><label className="mb-1 block text-sm font-semibold" htmlFor="persona-contact">Contact</label><select id="persona-contact" value={selectedContact} onChange={(e) => setSelectedContact(e.target.value)} className="mb-3 w-full rounded-xl bg-ios-fill p-3">{mem.map((c) => <option key={c.id} value={c.id}>{contactName(c)}</option>)}</select>{mem.filter((c) => c.id === selectedContact).map((c) => <div key={c.id}><label htmlFor="persona-description" className="mb-1 block text-sm font-semibold">Personality for {contactName(c)}</label><textarea id="persona-description" aria-label="Personality" maxLength={600} value={c.personality ?? personalityOf(c)} onChange={(e) => { const personality = e.target.value; patchData((s) => ({ contacts: s.contacts.map((x) => x.id === c.id ? { ...x, personality } : x) })); }} rows={3} className="mb-2 w-full resize-none rounded-xl bg-ios-fill p-3 text-sm outline-none"/><button onClick={() => patchData((s) => ({ contacts: s.contacts.map((x) => x.id === c.id ? { ...x, personality: undefined } : x) }))} className="mb-4 text-sm text-ios-blue">Reset personality</button></div>)}</>}
-        <div className="border-t border-ios-sep pt-3"><label className="mb-3 flex items-center gap-3"><input type="checkbox" checked={ai.enabled} onChange={(e) => setAI((a) => ({ ...a, enabled: e.target.checked }))}/> Use AI for all conversations</label>
-        <p className="mb-3 text-xs text-ios-label2">AI sends recent messages and the selected personality to your chosen provider. Without AI, replies are scripted. Provider settings and key stay in memory until Messages is closed or the page is reloaded.</p>
-        {ai.enabled && <div className="space-y-2"><input value={ai.url} onChange={(e) => setAI((a) => ({ ...a, url: e.target.value }))} placeholder="HTTPS chat completions endpoint" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><input value={ai.model} onChange={(e) => setAI((a) => ({ ...a, model: e.target.value }))} placeholder="Model name" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><input type="password" autoComplete="off" value={ai.key} onChange={(e) => setAI((a) => ({ ...a, key: e.target.value }))} placeholder="API key (optional)" className="w-full rounded-xl bg-ios-fill p-3 outline-none"/><p className="text-xs text-ios-label2">Requires a browser-accessible OpenAI-compatible endpoint with CORS enabled. Use a limited-scope key.</p></div>}</div>
+        <div className="border-t border-ios-sep pt-3"><div className="font-semibold">On-device AI replies</div><p className="my-2 text-xs text-ios-label2">No account or API key needed. The first download is several hundred MB and requires WebGPU, sufficient memory, and network access to the model host. Conversation text stays on your device. Without the model, replies are scripted.</p>
+          {aiStatus.status === "loading" ? <div role="status" className="rounded-xl bg-ios-fill p-3 text-sm"><div>Downloading AI · {Math.round(aiStatus.progress * 100)}%</div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-ios-fill2"><div className="h-full bg-ios-blue" style={{ width: `${aiStatus.progress * 100}%` }} /></div></div> : aiStatus.status === "ready" ? <label className="flex items-center gap-3 py-2 text-sm"><input type="checkbox" checked={ai.enabled} onChange={(e) => { setLocalAIEnabled(e.target.checked); setAI({ enabled: e.target.checked }); }}/> Use on-device AI for all conversations</label> : <button onClick={() => { void loadLocalAI().then(() => { setLocalAIEnabled(true); setAI({ enabled: true }); }).catch(() => setAI({ enabled: false })); }} className="w-full rounded-xl bg-ios-blue py-3 font-semibold text-white">{aiStatus.status === "error" ? "Retry AI download" : "Download and enable AI"}</button>}
+          {aiStatus.status === "error" && <p role="alert" className="mt-2 text-xs text-ios-red">{aiStatus.message}</p>}
+        </div>
       </div></div>}
 
       <div className="flex shrink-0 items-end gap-2 px-3 pb-2 pt-1.5" style={{ paddingBottom: "calc(var(--safe-bottom) + 6px)" }}>
@@ -206,7 +204,7 @@ function ThreadView({ id, onBack, ai, setAI }: { id: string; onBack: () => void;
 export default function MessagesApp() {
   const threads = useData((s) => s.threads);
   const contacts = useData((s) => s.contacts);
-  const [ai, setAI] = useState<AIConfig>({ enabled: false, url: "", model: "", key: "" });
+  const [ai, setAI] = useState<AIConfig>({ enabled: isLocalAIEnabled() });
   const [openId, setOpenId] = useState<string | null>(null);
   const [composing, setComposing] = useState(false);
   const [to, setTo] = useState("");

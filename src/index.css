@@ -151,22 +151,29 @@ body {
 }
 
 /* iOS-style "vibrant" glass materials — thicker blur + saturation */
+.glass, .glass-dark, .glass-light {
+  -webkit-backdrop-filter: blur(26px) saturate(175%);
+  backdrop-filter: blur(26px) saturate(175%);
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.48), inset 0 0 0 .5px rgba(255,255,255,.25), inset 0 -1px 1px rgba(0,0,0,.09), 0 7px 24px rgba(0,0,0,.14);
+}
 .glass {
-  background: linear-gradient(145deg, rgba(255,255,255,.17), rgba(255,255,255,.025)), var(--ios-material);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,.42), inset 0 0 0 .5px rgba(255,255,255,.25), 0 8px 24px rgba(0,0,0,.08);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  background: linear-gradient(155deg, rgba(255,255,255,.25), rgba(255,255,255,.035)), color-mix(in srgb, var(--ios-material) calc(var(--glass-opacity, .55) * 100%), transparent);
 }
 .glass-dark {
-  background: linear-gradient(145deg, rgba(255,255,255,.15), rgba(255,255,255,.025)), rgba(40, 40, 44, 0.55);
-  box-shadow: inset 0 1px 1px rgba(255,255,255,.25), inset 0 0 0 .5px rgba(255,255,255,.20), 0 6px 18px rgba(0,0,0,.1);
-  backdrop-filter: blur(34px) saturate(180%);
-  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  background: linear-gradient(155deg, rgba(255,255,255,.18), rgba(255,255,255,.025)), rgb(25 25 30 / var(--glass-opacity, .55));
+  box-shadow: inset 0 1px 1px rgba(255,255,255,.28), inset 0 0 0 .5px rgba(255,255,255,.22), inset 0 -1px 1px rgba(0,0,0,.18), 0 7px 24px rgba(0,0,0,.2);
 }
 .glass-light {
-  background: rgba(255, 255, 255, 0.28);
-  backdrop-filter: blur(34px) saturate(180%);
-  -webkit-backdrop-filter: blur(34px) saturate(180%);
+  background: linear-gradient(155deg, rgba(255,255,255,.22), rgba(255,255,255,.035)), rgb(255 255 255 / calc(var(--glass-opacity, .55) * .45));
+}
+button.glass, button.glass-dark, button.glass-light {
+  transition: transform .36s cubic-bezier(.2,1.5,.3,1), box-shadow .25s, background-color .25s;
+}
+button.glass:active, button.glass-dark:active, button.glass-light:active { transform: scale(.94); }
+@media (prefers-reduced-transparency: reduce) {
+  .glass { background: var(--ios-material); }
+  .glass-dark { background: #303034; }
+  .glass-light { background: #a0a0a5; }
 }
 
 .ios-row {
@@ -374,6 +381,8 @@ body {
 }
 
 /* Concept fold transition, not a hardware simulation. */
-@keyframes duo-fold-in { 0% { opacity: .65; filter: brightness(.75); clip-path: inset(0 44% round 48px); } 100% { opacity: 1; filter: brightness(1); clip-path: inset(0 0 round 48px); } }
-.duo-fold { animation: duo-fold-in .55s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes duo-open { 0% { opacity: .65; filter: brightness(.8); clip-path: inset(0 36% round 48px); } 100% { opacity: 1; filter: brightness(1); clip-path: inset(0 0 round 48px); } }
+@keyframes duo-close { 0% { opacity: .7; filter: brightness(.75); clip-path: inset(0 10% round 48px); } 100% { opacity: 1; filter: brightness(1); clip-path: inset(0 0 round 48px); } }
+.duo-opening { animation: duo-open .55s cubic-bezier(.2,.8,.2,1) both; }
+.duo-closing { animation: duo-close .55s cubic-bezier(.2,.8,.2,1) both; }
 @media (prefers-reduced-motion: reduce) { .duo-fold { animation: none; } }

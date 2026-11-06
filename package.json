@@ -13,6 +13,7 @@
     "desktop:win": "npm run build && electron-builder --win nsis --x64"
   },
   "dependencies": {
+    "@mlc-ai/web-llm": "^0.2.87",
     "clsx": "2.1.1",
     "fflate": "^0.8.3",
     "lucide-react": "^1.68.0",

@@ -171,6 +171,7 @@ export interface OSState {
   // persisted settings
   appearance: "light" | "dark" | "auto";
   brightness: number;
+  glassOpacity: number;
   volume: number;
   silent: boolean;
   keyClicks: boolean;
@@ -292,6 +293,7 @@ export const useOS = create<OSState>()(
 
       appearance: "light",
       brightness: 0.92,
+      glassOpacity: 0.55,
       volume: 0.6,
       silent: false,
       keyClicks: true,
@@ -645,6 +647,7 @@ export const useOS = create<OSState>()(
       partialize: (s) => ({
         appearance: s.appearance,
         brightness: s.brightness,
+        glassOpacity: s.glassOpacity,
         volume: s.volume,
         silent: s.silent,
         keyClicks: s.keyClicks,
