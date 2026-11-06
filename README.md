@@ -2,6 +2,10 @@
 
 An interactive iPhone simulator that runs in the browser. Built with React 19, TypeScript, Vite, Tailwind 4, Zustand. **Real iOS app icons** from iosicongallery.com. **Real iOS system sounds** (lock, unlock, message, charge, shutter, alarm, ringtone, boot). Plus all-new pro features.
 
+## Windows desktop app
+
+A Windows installer is built by the GitHub Actions **Build Windows desktop app** workflow. See [IPA_TESTING.md](IPA_TESTING.md#windows-desktop-app) for download, build, and native execution requirements. Native iOS execution requires a separate Mac and a simulator-compatible build.
+
 ## ⚡ Quick start — open `ios-simulator.html`
 
 **Just open `ios-simulator.html` in any modern browser** (Chrome, Firefox, Safari, Edge). It's a single self-contained file (976 KB) with all JavaScript, CSS, fonts, sounds, and icons bundled or referenced via CDN. No install, no build step, no server needed.

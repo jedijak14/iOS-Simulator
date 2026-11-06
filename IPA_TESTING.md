@@ -66,3 +66,11 @@ It uses `execFile` with separate arguments, never a shell command built from upl
 - Configure `IPA_RUNNER_ORIGIN` narrowly. The default allows the local Vite origin and `https://ios-simulator.vercel.app`.
 - Uploads are limited to 512 MiB. The runner requires `Authorization: Bearer …` for health checks and runs.
 - The companion is intentionally small and single-purpose. For shared or production use, put it behind your organization's authenticated tunnel and rotate tokens regularly.
+
+## Windows desktop app
+
+The Windows installer is built by the **Build Windows desktop app** GitHub Actions workflow. Run the workflow (or push to the session branch), open its successful run, and download the **iOS-Simulator-Windows-installer** artifact. Extract the ZIP and run the `.exe` installer. It is unsigned, so Windows may display a SmartScreen warning. You can also build it on Windows with Node.js 22: `npm ci` followed by `npm run desktop:win` (output in `release/`).
+
+The desktop app provides the existing local IPA analysis interface. It is a Windows desktop shell for the simulator UI, not an iOS virtual machine. Native installation and execution still occur on a separate Mac via the companion above; no iOS execution takes place on Windows. A simulator-compatible build is required: most ordinary iPhone/App Store IPAs target physical iOS devices and will not run in the iOS Simulator even on a Mac. The simulator also runs on the Mac, not embedded inside the Windows app.
+
+For the desktop client, set `IPA_RUNNER_ORIGIN='http://127.0.0.1:5179'` when starting the Mac companion, and configure the HTTPS tunnel URL and token in **Connect macOS Runner**. The desktop app binds that fixed port on Windows; if it is occupied, close the conflicting program and restart the app. Treat the bearer token as sensitive; do not post it in GitHub or chat.

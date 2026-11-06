@@ -1,0 +1,25 @@
+name: Build Windows desktop app
+on:
+  workflow_dispatch:
+  push:
+    branches: [arena/909c2bfc-ios-simulator]
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run desktop:win
+      - uses: actions/upload-artifact@v4
+        with:
+          name: iOS-Simulator-Windows-installer
+          path: release/*.exe
+          if-no-files-found: error
+          retention-days: 30
